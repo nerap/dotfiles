@@ -83,8 +83,19 @@ source $ZSH/oh-my-zsh.sh
 
 # Preferred editor for local and remote sessions
 export EDITOR='nvim'
-# fi
 
+
+export PATH=$PATH:$HOME/bin/.local/scripts
+
+#source $HOME/.zsh_profile
+export XDG_CONFIG_HOME=$HOME/.config
+VIM="nvim"
+
+export GIT_EDITOR=$VIM
+export DOTFILES=$HOME/.dotfiles
+
+
+bindkey -s ^f "tmux-sessionizer\n"
 # Compilation flags
 # export ARCHFLAGS="-arch x86_64"
 
