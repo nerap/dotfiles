@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# kill all node processes
+for pid in $(ps -ef | grep -E ".*node.*(may|yarn dev)" | awk '{print $2}'); do kill -9 $pid; done;
+
+# Yarn lint-staged
+yarn lint-staged
+
+
