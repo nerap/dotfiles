@@ -93,7 +93,7 @@ VIM="nvim"
 
 export GIT_EDITOR=$VIM
 export DOTFILES=$HOME/.dotfiles
-export HUSKY = 0
+export HUSKY=0
 
 
 bindkey -s ^f "tmux-sessionizer\n"
