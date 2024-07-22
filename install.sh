@@ -3,6 +3,9 @@
 # Install Homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
+# Default dir
+mdkir -p ~/personal ~/work
+
 # Install Homebrew packages
 brew install \
    autoconf \
@@ -63,7 +66,6 @@ brew install \
    zsh
 
 # Install Homebrew casks
-
 brew install --cask \
   arc \
   discord \
@@ -72,6 +74,7 @@ brew install --cask \
   obsidian \
   iterm2 \
   notion \
+  redis \
   slack \
   spotify
 
@@ -79,7 +82,15 @@ brew install --cask \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install Node
-nvm install node
+nvm install v18.19.0
+nvm alias default v18.19.0
+
+# Install miniconda
+mkdir -p ~/personal/miniconda3
+curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o ~/personal/miniconda3/miniconda.sh
+bash ~/personal/miniconda3/miniconda.sh -b -u -p ~/personal/miniconda3
+rm -rf ~/personal/miniconda3/miniconda.sh
+export PATH=$PATH:~/personal/miniconda3/bin
 
 ## Symbolic links
 # ZSH
