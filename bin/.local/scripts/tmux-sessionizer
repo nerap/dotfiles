@@ -24,6 +24,8 @@ fi
 
 if [[ -z $TMUX ]]; then
     tmux attach-session -t $selected_name
+selected_name=$(basename "$selected" | tr . _)
+tmux_running=$(pgrep tmux)
 else
     tmux switch-client -t $selected_name
 fi

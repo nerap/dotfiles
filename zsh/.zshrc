@@ -79,7 +79,7 @@ source $ZSH/oh-my-zsh.sh
 # export MANPATH="/usr/local/man:$MANPATH"
 
 # You may need to manually set your language environment
-# export LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
 
 # Preferred editor for local and remote sessions
 export EDITOR='nvim'
@@ -98,7 +98,7 @@ export HUSKY=0
 
 bindkey -s ^f "tmux-sessionizer\n"
 # Compilation flags
-# export ARCHFLAGS="-arch x86_64"
+export ARCHFLAGS="-arch x86_64"
 
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
 # plugins, and themes. Aliases can be placed here, though oh-my-zsh
@@ -119,13 +119,21 @@ export NVM_DIR="$HOME/.nvm"
 
 export GPG_TTY=$(tty)
 
-export GPG_TTY=$(tty)
-
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/Users/rapahel/personal/miniconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+
+git_folder=$(basename `git rev-parse --show-toplevel 2> /dev/null`)
+is_conda_env=$(conda info --envs | grep $git_folder | wc -l | tr -d ' ' 2> /dev/null)
+
 if [ $? -eq 0 ]; then
     eval "$__conda_setup"
+    if [ $((is_conda_env)) -eq 1 ]; then
+        echo "Activating conda environment $git_folder"
+        conda activate $git_folder
+    else
+        conda deactivate
+    fi
 else
     if [ -f "/Users/rapahel/personal/miniconda3/etc/profile.d/conda.sh" ]; then
         . "/Users/rapahel/personal/miniconda3/etc/profile.d/conda.sh"
