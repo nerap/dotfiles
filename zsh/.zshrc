@@ -123,7 +123,7 @@ export GPG_TTY=$(tty)
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/Users/rapahel/personal/miniconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
 
-git_folder=$(basename `git rev-parse --show-toplevel 2> /dev/null`)
+git_folder=$(basename `git rev-parse --show-toplevel` 2> /dev/null)
 is_conda_env=$(conda info --envs | grep $git_folder | wc -l | tr -d ' ' 2> /dev/null)
 
 if [ $? -eq 0 ]; then
