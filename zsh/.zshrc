@@ -119,6 +119,9 @@ export NVM_DIR="$HOME/.nvm"
 
 export GPG_TTY=$(tty)
 
+export MAGICK_HOME=/opt/homebrew/opt/imagemagick
+export PATH=$MAGICK_HOME/bin:$PATH
+
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/Users/rapahel/personal/miniconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"

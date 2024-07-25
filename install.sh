@@ -50,6 +50,8 @@ brew install \
    ripgrep \
    ruby \
    stripe-cli \
+   freetype \
+   ImageMagick \
    supabase \
    sqlite \
    tmux \
@@ -91,6 +93,9 @@ curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o ~/
 bash ~/personal/miniconda3/miniconda.sh -b -u -p ~/personal/miniconda3
 rm -rf ~/personal/miniconda3/miniconda.sh
 export PATH=$PATH:~/personal/miniconda3/bin
+
+# Install Magick
+luarocks --local --lua-version=5.1 install magick
 
 ## Symbolic links
 # ZSH
