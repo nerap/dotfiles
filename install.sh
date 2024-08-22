@@ -84,8 +84,8 @@ brew install --cask \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install Node
-nvm install v18.19.0
-nvm alias default v18.19.0
+nvm install v18.20.0
+nvm alias default v18.20.0
 
 # Install miniconda
 mkdir -p ~/personal/miniconda3
@@ -99,23 +99,23 @@ luarocks --local --lua-version=5.1 install magick
 
 ## Symbolic links
 # ZSH
-ln -sf ~/.dotfiles/zsh/.zshrc ~/.zshrc
-ln -sf ~/.dotfiles/.zsh/.zsh_profile ~/.zsh_profile
+ln -sf ~/personal/.dotfiles/zsh/.zshrc ~/.zshrc
+ln -sf ~/personal/.dotfiles/.zsh/.zsh_profile ~/.zsh_profile
 
 # TMUX
-ln -sf ~/.dotfiles/tmux/.tmux-cht-command ~/.tmux-cht-command
-ln -sf ~/.dotfiles/tmux/.tmux-cht-languages ~/.tmux-cht-languages
-ln -sf ~/.dotfiles/tmux/.tmux.conf ~/.tmux.conf
+ln -sf ~/personal/.dotfiles/tmux/.tmux-cht-command ~/.tmux-cht-command
+ln -sf ~/personal/.dotfiles/tmux/.tmux-cht-languages ~/.tmux-cht-languages
+ln -sf ~/personal/.dotfiles/tmux/.tmux.conf ~/.tmux.conf
 
 # Git
-ln -sf ~/.dotfiles/git/.gitconfig ~/.gitconfig
+ln -sf ~/personal/.dotfiles/git/.gitconfig ~/.gitconfig
 
 # Neovim
-git clone https://github.com/nerap/nvim ~/.dotfiles/nvim
+#git clone https://github.com/nerap/nvim ~/.dotfiles/nvim
 git clone https://github.com/ThePrimeagen/harpoon.git ~/personal/harpoon -b harpoon2
 git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
-ln -sf ./nvim ~/.config
+ln -sf ~/personal/.dotfiles/nvim ~/.config
 
 # Local
-chmod +x ~/.dotfiles/bin/.local/scripts/*
-ln -sf ~/.dotfiles/bin  ~
+chmod +x ~/personal/.dotfiles/bin/.local/scripts/*
+ln -sf ~/personal/.dotfiles/bin  ~
