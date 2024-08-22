@@ -1,56 +1,55 @@
 #!/usr/bin/env zsh
 
-## VARS
-#START_TIME=$SECONDS
-#DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-#
-#echo ""
-#echo "---------- dotfiles --------"
-#echo ""
-#echo "This will install & setup all the system."
-#read -n 1 -r -p "Ready? [y/N]" response
-#case $response in
-#    [yY]) echo "";;
-#    *) exit 1;;
-#esac
-#
-#read -e -p "Please enter machine name: " machine_name
-#MACHINE_NAME=${machine_name:-nerap}
-#
-#echo ""
-#echo "----- XCode Command Line Tools -----"
-#
-## cf. https://github.com/paulirish/dotfiles/blob/master/setup-a-new-machine.sh#L87
-#
-#if ! xcode-select --print-path &> /dev/null; then
-#    xcode-select --install &> /dev/null
-#    until xcode-select --print-path &> /dev/null; do
-#        sleep 5
-#    done
-#    print_result $? 'Install XCode Command Line Tools'
-#    sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
-#    print_result $? 'Make "xcode-select" developer directory point to Xcode'
-#    sudo xcodebuild -license
-#    print_result $? 'Agree with the XCode Command Line Tools licence'
-#fi
-#
-#echo ""
-#echo "----- install homebrew -----"
-#
-#/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-#brew doctor
-#brew update
-#brew upgrade
-#
-#echo "----- brew: install formulas -----"
-#xargs brew install < "$DOTFILES_DIR/packages/brew"
-#brew cleanup
-#
-#echo ""
-#echo "----- configure neovim -----"
+# VARS
+START_TIME=$SECONDS
+DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-#pip3 install --user --upgrade neovim
+echo ""
+echo "---------- dotfiles --------"
+echo ""
+echo "This will install & setup all the system."
+read -n 1 -r -p "Ready? [y/N]" response
+case $response in
+    [yY]) echo "";;
+    *) exit 1;;
+esac
 
+read -e -p "Please enter machine name: " machine_name
+MACHINE_NAME=${machine_name:-nerap}
+
+echo ""
+echo "----- XCode Command Line Tools -----"
+
+# cf. https://github.com/paulirish/dotfiles/blob/master/setup-a-new-machine.sh#L87
+
+if ! xcode-select --print-path &> /dev/null; then
+    xcode-select --install &> /dev/null
+    until xcode-select --print-path &> /dev/null; do
+        sleep 5
+    done
+    print_result $? 'Install XCode Command Line Tools'
+    sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
+    print_result $? 'Make "xcode-select" developer directory point to Xcode'
+    sudo xcodebuild -license
+    print_result $? 'Agree with the XCode Command Line Tools licence'
+fi
+
+echo ""
+echo "----- install homebrew -----"
+
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew doctor
+brew update
+brew upgrade
+
+echo "----- brew: install formulas -----"
+xargs brew install < "$DOTFILES_DIR/packages/brew"
+brew cleanup
+
+echo ""
+echo "----- configure neovim -----"
+
+brew install neovim
 
 ## Default dir
 #mdkir -p ~/personal ~/work ~/vaults
@@ -153,6 +152,8 @@ ln -sf ~/personal/zsh/.zshrc ~/.zshrc
 ln -sf ~/personal/zsh/.zsh_profile ~/.zsh_profile
 
 # TMUX
+mkdir -p ~/.config/tmux-plugins
+git clone https://github.com/tmux-plugins/tmux-resurrect ~/.config/tmux-plugins/tmux-resurrect
 git clone https://github.com/nerap/tmux.git ~/personal/tmux
 ln -sf ~/personal/tmux/.tmux-cht-command ~/.tmux-cht-command
 ln -sf ~/personal/tmux/.tmux-cht-languages ~/.tmux-cht-languages
