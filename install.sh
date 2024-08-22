@@ -20,9 +20,7 @@ MACHINE_NAME=${machine_name:-nerap}
 
 echo ""
 echo "----- XCode Command Line Tools -----"
-
 # cf. https://github.com/paulirish/dotfiles/blob/master/setup-a-new-machine.sh#L87
-
 if ! xcode-select --print-path &> /dev/null; then
     xcode-select --install &> /dev/null
     until xcode-select --print-path &> /dev/null; do
@@ -35,6 +33,7 @@ if ! xcode-select --print-path &> /dev/null; then
     print_result $? 'Agree with the XCode Command Line Tools licence'
 fi
 
+
 echo ""
 echo "----- install homebrew -----"
 
@@ -43,24 +42,29 @@ brew doctor
 brew update
 brew upgrade
 
+
 echo ""
 echo "----- brew: install -----"
 
 xargs brew install < "$DOTFILES_DIR/packages/brew"
 brew cleanup
 
+
 echo ""
 echo "----- brew: cask -----"
+
 
 brew tap caskroom/cask
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 xargs brew install --cask < "$DOTFILES_DIR/packages/cask"
+
 
 echo ""
 echo "----- brew: fonts -----"
 
 brew tap caskroom/fonts
 xargs brew cask install < "$DOTFILES_DIR/packages/fonts"
+
 
 echo ""
 echo "----- setup: htop -----"
@@ -71,11 +75,40 @@ if [[ "$(type -P $binroot/htop)" ]] && [[ "$(stat -L -f "%Su:%Sg" "$binroot/htop
     sudo chmod u+s "$binroot/htop"
 fi
 
+
+echo ""
+echo "----- rust -----"
+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+
+echo ""
+echo "----- nvm -----"
+
+nvm install v18.20.0
+nvm alias default v18.20.0
+
+
+echo ""
+echo "----- miniconde3 -----"
+
+mkdir -p ~/personal/miniconda3
+curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o ~/personal/miniconda3/miniconda.sh
+bash ~/personal/miniconda3/miniconda.sh -b -u -p ~/personal/miniconda3
+rm -rf ~/personal/miniconda3/miniconda.sh
+export PATH=$PATH:~/personal/miniconda3/bin
+
+
+echo ""
+echo "----- lua magick -----"
+
+luarocks --local --lua-version=5.1 install magick
+
+
 echo ""
 echo "----- default dirs -----"
 
 mdkir -p ~/personal ~/work ~/vaults
-
 
 
 echo ""
@@ -267,24 +300,6 @@ defaults write com.apple.ActivityMonitor ShowCategory -int 0
 defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
 
-#
-#
-## Install Rust
-#curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-#
-## Install Node
-#nvm install v18.20.0
-#nvm alias default v18.20.0
-#
-## Install miniconda
-#mkdir -p ~/personal/miniconda3
-#curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o ~/personal/miniconda3/miniconda.sh
-#bash ~/personal/miniconda3/miniconda.sh -b -u -p ~/personal/miniconda3
-#rm -rf ~/personal/miniconda3/miniconda.sh
-#export PATH=$PATH:~/personal/miniconda3/bin
-#
-## Install Magick
-#luarocks --local --lua-version=5.1 install magick
 ## Symbolic links ZSH
 git clone https://github.com/nerap/zsh.git ~/personal/zsh
 ln -sf ~/personal/zsh/.zshrc ~/.zshrc
