@@ -90,9 +90,7 @@ fi
 #
 ## Install Magick
 #luarocks --local --lua-version=5.1 install magick
-
-## Symbolic links
-# ZSH
+## Symbolic links ZSH
 git clone https://github.com/nerap/zsh.git ~/personal/zsh
 ln -sf ~/personal/zsh/.zshrc ~/.zshrc
 ln -sf ~/personal/zsh/.zsh_profile ~/.zsh_profile
