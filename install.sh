@@ -42,91 +42,37 @@ brew doctor
 brew update
 brew upgrade
 
-echo "----- brew: install formulas -----"
+echo ""
+echo "----- brew: install -----"
+
 xargs brew install < "$DOTFILES_DIR/packages/brew"
 brew cleanup
 
 echo ""
-echo "----- configure neovim -----"
+echo "----- brew: cask -----"
 
-brew install neovim
+brew tap caskroom/cask
+export HOMEBREW_CASK_OPTS="--appdir=/Applications"
+xargs brew install --cask < "$DOTFILES_DIR/packages/cask"
+
+echo ""
+echo "----- brew: fonts -----"
+
+brew tap caskroom/fonts
+xargs brew cask install < "$DOTFILES_DIR/packages/fonts"
+
+echo ""
+echo "----- setup: htop -----"
+
+if [[ "$(type -P $binroot/htop)" ]] && [[ "$(stat -L -f "%Su:%Sg" "$binroot/htop")" != "root:wheel" || ! "$(($(stat -L -f "%DMp" "$binroot/htop") & 4))" ]]; then
+    echo "- Updating htop permissions"
+    sudo chown root:wheel "$binroot/htop"
+    sudo chmod u+s "$binroot/htop"
+fi
 
 ## Default dir
 #mdkir -p ~/personal ~/work ~/vaults
 #
-## Install Homebrew packages
-#brew install \
-#   autoconf \
-#   automake \
-#   bash \
-#   bash-completion \
-#   bat \
-#   cmake \
-#   coreutils \
-#   ctags \
-#   curl \
-#   diff-so-fancy \
-#   docker \
-#   fd \
-#   font-hack-nerd-font \
-#   fzf \
-#   gcc \
-#   git \
-#   git-delta \
-#   gnu-sed \
-#   gnu-tar \
-#   gnu-which \
-#   gpg \
-#   grep \
-#   htop \
-#   jq \
-#   less \
-#   libtool \
-#   lsd \
-#   luarocks \
-#   luv \
-#   make \
-#   nvm \
-#   neovim \
-#   node \
-#   openssh \
-#   openssl \
-#   p7zip \
-#   pandoc \
-#   python \
-#   python@3.9 \
-#   ripgrep \
-#   ruby \
-#  stripe-cli \
-#   freetype \
-#   ImageMagick \
-#   supabase \
-#   sqlite \
-#   tmux \
-#   tree-sitter \
-#   tree-sitter-lua \
-#   tree-sitter-python \
-#   tree-sitter-typescript \
-#   tree-sitter-yaml \
-#   unibilium \
-#   unzip \
-#   wget \
-#   xz \
-#   yarn \
-#   zsh
-#
-## Install Homebrew casks
-#brew install --cask \
-#  arc \
-#  discord \
-#  docker \
-#  dbeaver-community
-#  obsidian \
-#  iterm2 \
-#  notion \
-#  redis \
-#  slack \
-#  spotify
 #
 ## Install Rust
 #curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -171,3 +117,22 @@ ln -sf ~/personal/nvim ~/.config
 # Local
 chmod +x ~/personal/dotfiles/bin/.local/scripts/*
 ln -sf ~/personal/dotfiles/bin  ~
+
+ELAPSED_TIME=$(($SECONDS - $START_TIME))
+
+echo ""
+echo ""
+echo ""
+echo "-----------------------------"
+echo "----- pwendok ended -----"
+echo "-----------------------------"
+echo "Duration : $(($ELAPSED_TIME/60)) min $(($ELAPSED_TIME%60)) sec"
+echo "-------------------------"
+echo "Done. All these changes require a logout/restart to take effect."
+echo "-------------------------"
+
+#read -n 1 -r -p "Ready? [y/N]" response
+#case $response in
+#    [yY]) echo ""; osascript -e 'tell app "System Events" to restart';;
+#    *) echo "ok."; exit 0;;
+#esac
