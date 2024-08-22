@@ -160,9 +160,9 @@ ln -sf ~/personal/dotfiles/tmux/.tmux.conf ~/.tmux.conf
 ln -sf ~/personal/dotfiles/git/.gitconfig ~/.gitconfig
 
 # Neovim
-#git clone https://github.com/nerap/nvim ~/.dotfiles/nvim
-git clone https://github.com/ThePrimeagen/harpoon.git ~/personal/harpoon -b harpoon2
-git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
+ln -sf ~/personal/dotfiles/nvim/harpoon ~/personal/harpoon
+ln -sf ~/personal/dotfiles/nvim/gitmoji.nvim ~/personal/gitmoji
+ln -sf ~/personal/dotfiles/nvim ~/personal/nvim
 ln -sf ~/personal/dotfiles/nvim ~/.config
 
 # Local
