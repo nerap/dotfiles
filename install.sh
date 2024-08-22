@@ -148,9 +148,9 @@
 
 ## Symbolic links
 # ZSH
-#git clone https://github.com/nerap/zsh.git ~/personal/zsh
-#ln -sf ~/personal/zsh/.zshrc ~/.zshrc
-#ln -sf ~/personal/zsh/.zsh_profile ~/.zsh_profile
+git clone https://github.com/nerap/zsh.git ~/personal/zsh
+ln -sf ~/personal/zsh/.zshrc ~/.zshrc
+ln -sf ~/personal/zsh/.zsh_profile ~/.zsh_profile
 
 # TMUX
 git clone https://github.com/nerap/tmux.git ~/personal/tmux
