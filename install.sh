@@ -321,8 +321,6 @@ defaults write com.apple.WindowManager StageManagerHideWidgets -int 0
 defaults write com.apple.Siri StatusMenuVisible -bool false
 defaults write com.apple.assistant.support "Assistant Enabled" -bool false
 
-
-
 ########## Activity Monitor
 
 # Show the main window when launching Activity Monitor
@@ -337,10 +335,6 @@ defaults write com.apple.ActivityMonitor ShowCategory -int 0
 # Sort Activity Monitor results by CPU usage
 defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
-
-######### F.lux
-
-defaults import org.herf.Flux "$DOTFILES_DIR/preferences/org.herf.Flux.plist"
 
 ## Symbolic links ZSH
 git clone https://github.com/nerap/zsh.git ~/personal/zsh
