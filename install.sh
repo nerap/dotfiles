@@ -167,6 +167,22 @@ defaults write NSGlobalDomain AppleMetricUnits -bool true
 # Set the timezone; see `sudo systemsetup -listtimezones` for other values
 sudo systemsetup -settimezone "Europe/Paris" > /dev/null
 
+
+# Remove animation ;)
+# cf https://www.reddit.com/r/MacOS/comments/11p10ho/comment/ke0ikp0
+defaults write -g NSAutomaticWindowAnimationsEnabled -bool false
+defaults write -g NSScrollAnimationEnabled -bool false
+defaults write -g NSWindowResizeTime -float 0.001
+defaults write -g QLPanelAnimationDuration -float 0
+defaults write -g NSScrollViewRubberbanding -bool false
+defaults write -g NSDocumentRevisionsWindowTransformAnimation -bool false
+defaults write -g NSToolbarFullScreenAnimationDuration -float 0
+defaults write -g NSBrowserColumnAnimationSpeedMultiplier -float 0
+defaults write com.apple.finder DisableAllAnimations -bool true
+defaults write com.apple.Mail DisableSendAnimations -bool true
+defaults write com.apple.Mail DisableReplyAnimations -bool true
+defaults write NSGlobalDomain NSWindowResizeTime .001
+
 ######### Terminal & iTerm 2
 
 # Only use UTF-8 in Terminal.app
