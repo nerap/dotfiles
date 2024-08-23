@@ -65,6 +65,12 @@ xargs brew install --cask < "$DOTFILES_DIR/packages/fonts"
 
 
 echo ""
+echo "----- default browser -----"
+# Remove default browser pop-up in the future
+defaultbrowser arc
+
+
+echo ""
 echo "----- setup: htop -----"
 
 if [[ "$(type -P $binroot/htop)" ]] && [[ "$(stat -L -f "%Su:%Sg" "$binroot/htop")" != "root:wheel" || ! "$(($(stat -L -f "%DMp" "$binroot/htop") & 4))" ]]; then
@@ -161,8 +167,6 @@ defaults write NSGlobalDomain AppleMetricUnits -bool true
 # Set the timezone; see `sudo systemsetup -listtimezones` for other values
 sudo systemsetup -settimezone "Europe/Paris" > /dev/null
 
-
-
 ######### Terminal & iTerm 2
 
 # Only use UTF-8 in Terminal.app
@@ -184,9 +188,13 @@ defaults write com.apple.screencapture type -string "png"
 # Disable shadow in screenshots
 defaults write com.apple.screencapture disable-shadow -bool true
 
-########## Finder
+# Require password immediately after sleep or screen saver begins
+defaults write com.apple.screensaver askForPassword -int 1
+defaults write com.apple.screensaver askForPasswordDelay -int 0
 
-# Finder: show status bar
+#i######## Findepple.screensaver askForPasswordDelay -int 0r
+
+#pple.screensaver askForPasswordDelay -int 0 Finder: show status bar
 defaults write com.apple.finder ShowStatusBar -bool true
 
 # Finder: show all filename extensions

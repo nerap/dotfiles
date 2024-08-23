@@ -8,6 +8,7 @@ bat
 cloc
 cmake
 coreutils
+defaultbrowser
 dfu-programmer
 docker
 dnsmasq
