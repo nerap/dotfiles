@@ -301,6 +301,15 @@ defaults write com.apple.dock largesize -float 18
 # Don’t automatically rearrange Spaces based on most recent use
 defaults write com.apple.dock mru-spaces -bool false
 
+# Remove hot corners
+defaults write com.apple.dock wvous-tl-corner -int 0
+
+# Remove widget in Notification Center
+defaults write com.apple.WindowManager StandardHideWidgets -int 0
+
+# Using state management for the dock
+defaults write com.apple.WindowManager StageManagerHideWidgets -int 0
+
 ########## Activity Monitor
 
 # Show the main window when launching Activity Monitor
