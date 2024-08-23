@@ -9,15 +9,14 @@ cloc
 cmake
 coreutils
 dfu-programmer
+docker
 dnsmasq
 elixir
 elm
-exa
 fd
 ffmpeg
 findutils
 fzf
-geoip
 git
 git-extras
 git-sizer
@@ -30,6 +29,7 @@ htop-osx
 hub
 ImageMagick
 jq
+koekeishiya/formulae/yabai
 less
 libtool
 links

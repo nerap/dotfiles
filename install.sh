@@ -53,8 +53,7 @@ brew cleanup
 echo ""
 echo "----- brew: cask -----"
 
-
-brew tap caskroom/cask
+brew tap homebrew/cask
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 xargs brew install --cask < "$DOTFILES_DIR/packages/cask"
 
@@ -62,8 +61,7 @@ xargs brew install --cask < "$DOTFILES_DIR/packages/cask"
 echo ""
 echo "----- brew: fonts -----"
 
-brew tap caskroom/fonts
-xargs brew cask install < "$DOTFILES_DIR/packages/fonts"
+xargs brew install --cask < "$DOTFILES_DIR/packages/fonts"
 
 
 echo ""
@@ -167,10 +165,6 @@ defaults write com.apple.terminal StringEncodings -array 4
 # Disable auto-correct
 defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
 
-######### F.lux
-
-defaults import org.herf.Flux "$DOTFILES_DIR/preferences/org.herf.Flux.plist"
-
 ########## Screen
 
 # Save screenshots to the desktop
@@ -225,11 +219,16 @@ defaults write com.apple.finder FXInfoPanesExpanded -dict General -bool true Ope
 
 ########## Dock, Dashboard, and hot corners
 
+# Hide Dock
+defaults write com.apple.dock autohide -bool true && killall Dock
+defaults write com.apple.dock autohide-delay -float 1000 && killall Dock
+defaults write com.apple.dock no-bouncing -bool TRUE && killall Dock
+
 # Disable bouncing
-#defaults write com.apple.dock no-bouncing -bool true
+defaults write com.apple.dock no-bouncing -bool true
 
 # Show indicator lights for open applications in the Dock
-defaults write com.apple.dock show-process-indicators -bool true
+#defaults write com.apple.dock show-process-indicators -bool true
 
 # Don’t animate opening applications from the Dock
 defaults write com.apple.dock launchanim -bool false
@@ -238,7 +237,7 @@ defaults write com.apple.dock launchanim -bool false
 defaults write com.apple.dock minimize-to-application -bool true
 
 # Speed up Mission Control animations
-defaults write com.apple.dock expose-animation-duration -float 0.1
+defaults write com.apple.dock expose-animation-duration -float 0.001
 
 # Don’t group windows by application in Mission Control (i.e. use the old Exposé behavior instead)
 defaults write com.apple.dock expose-group-by-app -bool false
@@ -300,6 +299,10 @@ defaults write com.apple.ActivityMonitor ShowCategory -int 0
 defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
 
+######### F.lux
+
+defaults import org.herf.Flux "$DOTFILES_DIR/preferences/org.herf.Flux.plist"
+
 ## Symbolic links ZSH
 git clone https://github.com/nerap/zsh.git ~/personal/zsh
 ln -sf ~/personal/zsh/.zshrc ~/.zshrc
@@ -332,7 +335,7 @@ echo ""
 echo ""
 echo ""
 echo "-----------------------------"
-echo "----- pwendok ended -----"
+echo "----- dotfiles ended -----"
 echo "-----------------------------"
 echo "Duration : $(($ELAPSED_TIME/60)) min $(($ELAPSED_TIME%60)) sec"
 echo "-------------------------"
