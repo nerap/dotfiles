@@ -183,6 +183,11 @@ defaults write com.apple.Mail DisableSendAnimations -bool true
 defaults write com.apple.Mail DisableReplyAnimations -bool true
 defaults write NSGlobalDomain NSWindowResizeTime .001
 
+######### Login
+
+# Disable password hints
+defaults write com.apple.loginwindow RetriesUntilHint -int 0
+
 ######### Terminal & iTerm 2
 
 # Only use UTF-8 in Terminal.app
@@ -310,20 +315,13 @@ defaults write com.apple.WindowManager StandardHideWidgets -int 0
 # Using state management for the dock
 defaults write com.apple.WindowManager StageManagerHideWidgets -int 0
 
-########## Activity Monitor
+########## Miscellaneouss
 
-# Show the main window when launching Activity Monitor
-defaults write com.apple.ActivityMonitor OpenMainWindow -bool true
+# Disable Siri
+defaults write com.apple.Siri StatusMenuVisible -bool false
+defaults write com.apple.assistant.support "Assistant Enabled" -bool false
 
-# Visualize CPU usage in the Activity Monitor Dock icon
-defaults write com.apple.ActivityMonitor IconType -int 5
 
-# Show all processes in Activity Monitor
-defaults write com.apple.ActivityMonitor ShowCategory -int 0
-
-# Sort Activity Monitor results by CPU usage
-defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
-defaults write com.apple.ActivityMonitor SortDirection -int 0
 
 ########## Activity Monitor
 
