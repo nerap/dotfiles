@@ -125,6 +125,12 @@ sudo scutil --set HostName "${MACHINE_NAME}"
 sudo scutil --set LocalHostName "${MACHINE_NAME}"
 sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "${MACHINE_NAME}"
 
+# Enable dark mode
+defaults write NSGlobalDomain AppleInterfaceStyle -string "Dark"
+defaults write NSGlobalDomain AppleAccentColor -string "-1"
+defaults write NSGlobalDomain AppleHighlightColor -string \
+  "0.847059 0.847059 0.862745 Graphite"
+
 # Disable the sound effects on boot
 sudo nvram SystemAudioVolume=" "
 
@@ -154,6 +160,8 @@ defaults write NSGlobalDomain AppleMetricUnits -bool true
 
 # Set the timezone; see `sudo systemsetup -listtimezones` for other values
 sudo systemsetup -settimezone "Europe/Paris" > /dev/null
+
+
 
 ######### Terminal & iTerm 2
 
@@ -237,7 +245,7 @@ defaults write com.apple.dock launchanim -bool false
 defaults write com.apple.dock minimize-to-application -bool true
 
 # Speed up Mission Control animations
-defaults write com.apple.dock expose-animation-duration -float 0.001
+defaults write com.apple.dock expose-animation-duration -float 0.1
 
 # Don’t group windows by application in Mission Control (i.e. use the old Exposé behavior instead)
 defaults write com.apple.dock expose-group-by-app -bool false
