@@ -193,6 +193,11 @@ defaults write com.apple.Mail DisableSendAnimations -bool true
 defaults write com.apple.Mail DisableReplyAnimations -bool true
 defaults write NSGlobalDomain NSWindowResizeTime .001
 
+######### Preferences
+
+## Import iTerm2 settings
+defaults import com.googlecode.iterm2 "$DOTFILES_DIR/preferences/com.googlecode.iterm2.plist"
+
 ######### Login
 
 # Disable password hints
