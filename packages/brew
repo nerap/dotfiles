@@ -59,6 +59,7 @@ sdl2_image
 sdl2_mixer
 sdl2_ttf
 ssh-copy-id
+stow
 stripe-cli
 svn
 the_silver_searcher

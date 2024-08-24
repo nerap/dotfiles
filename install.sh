@@ -340,31 +340,20 @@ defaults write com.apple.ActivityMonitor ShowCategory -int 0
 defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
 
-## Symbolic links ZSH
-git clone https://github.com/nerap/zsh.git ~/personal/zsh
-ln -sf ~/personal/zsh/.zshrc ~/.zshrc
-ln -sf ~/personal/zsh/.zsh_profile ~/.zsh_profile
+#################################################################
+#################################################################
+#################################################################
 
-# TMUX
-mkdir -p ~/.config/tmux-plugins
-git clone https://github.com/tmux-plugins/tmux-resurrect ~/.config/tmux-plugins/tmux-resurrect
-git clone https://github.com/nerap/tmux.git ~/personal/tmux
-ln -sf ~/personal/tmux/.tmux-cht-command ~/.tmux-cht-command
-ln -sf ~/personal/tmux/.tmux-cht-languages ~/.tmux-cht-languages
-ln -sf ~/personal/tmux/.tmux.conf ~/.tmux.conf
-
-# Git
-ln -sf ~/personal/dotfiles/git/.gitconfig ~/.gitconfig
-
-# Neovim
+# Neovim personal repo must have
 git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
 git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
-git clone https://github.com/nerap/nvim.git ~/personal/nvim
-ln -sf ~/personal/nvim ~/.config
 
-# Local
-chmod +x ~/personal/dotfiles/bin/.local/scripts/*
-ln -sf ~/personal/dotfiles/bin  ~
+# Giving execution rights to scripts
+chmod +x ~/personal/dotfiles/etc/.local/scripts/*
+
+# Stow
+stow --dir="etc" --target=$HOME -S .
+stow --dir="modules" --target=$HOME -S tmux zsh
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
 

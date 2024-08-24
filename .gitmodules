@@ -1,0 +1,12 @@
+[submodule "stow/.config/nvim"]
+	path = stow/.config/nvim
+	url = https://github.com/nerap/nvim
+[submodule "modules/tmux"]
+	path = modules/tmux
+	url = https://github.com/nerap/tmux
+[submodule "modules/zsh"]
+	path = modules/zsh
+	url = https://github.com/nerap/zsh
+[submodule "stow/.config/tmux-plugins/tmux-resurrect"]
+	path = stow/.config/tmux-plugins/tmux-resurrect
+	url = https://github.com/tmux-plugins/tmux-resurrect
