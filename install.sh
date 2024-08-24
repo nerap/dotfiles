@@ -138,8 +138,6 @@ sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.serve
 # Enable dark mode
 defaults write NSGlobalDomain AppleInterfaceStyle -string "Dark"
 defaults write NSGlobalDomain AppleAccentColor -string "-1"
-defaults write NSGlobalDomain AppleHighlightColor -string \
-  "0.847059 0.847059 0.862745 Graphite"
 
 # Disable the sound effects on boot
 sudo nvram SystemAudioVolume=" "
@@ -170,7 +168,6 @@ defaults write NSGlobalDomain AppleMetricUnits -bool true
 
 # Set the timezone; see `sudo systemsetup -listtimezones` for other values
 sudo systemsetup -settimezone "Europe/Paris" > /dev/null
-
 
 # Remove animation ;)
 # cf https://www.reddit.com/r/MacOS/comments/11p10ho/comment/ke0ikp0
