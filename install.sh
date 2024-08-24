@@ -339,7 +339,7 @@ defaults write com.apple.ActivityMonitor SortDirection -int 0
 
 #################################################################
 
-# Neovim personal repo must have
+# nvim personal repo must have
 git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
 git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
 
@@ -351,10 +351,13 @@ git clone https://github.com/nerap/zsh.git ~/personal/zsh
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/.local/scripts/*
 
+# Create nvim dir if not exists
+mkdir -p ~/.config/nvim
+
 # Stow
 stow --dir="etc" --target=$HOME -S .
-stow --dir="~/personal " --target=$HOME -S tmux zsh
-stow --dir="~/personal " --target=$HOME/.config -S nvim
+stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
+stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
 
