@@ -77,7 +77,9 @@ defaultbrowser arc
 
 echo ""
 echo "----- setup: zsh -----"
+# Oh my zsh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+# Defer plugin
 git clone https://github.com/romkatv/zsh-defer.git ~/tools/zsh-defer
 
 
