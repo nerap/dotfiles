@@ -341,8 +341,6 @@ defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
 
 #################################################################
-#################################################################
-#################################################################
 
 # Neovim personal repo must have
 git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
