@@ -1,11 +1,41 @@
 [user]
 	email = 44852526+nerap@users.noreply.github.com
-	signingkey = 88CEAE3C5F965736
 	name = nerap
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKFVvdS1YvubEa032rQd9IH0wbmDhP3MPnAB8mYUQOd2 raph.en223@gmail.com
 [commit]
 	gpgsign = true
 [gpg]
-	program = gpg
+    program = gpg
+	format = ssh
+    eol = lfo
+	autocrlf = false
+[core]
+	# Treat spaces before tabs and all kinds of trailing whitespace as an error
+	# [default] trailing-space: looks for spaces at the end of a line
+	# [default] space-before-tab: looks for spaces before tabs at the beginning of a line
+	whitespace = space-before-tab,-indent-with-non-tab,trailing-space
+
+	# Make `git rebase` safer on OS X
+	# More info: <http://www.git-tower.com/blog/make-git-rebase-safe-on-osx/>
+	trustctime = false
+    editor = vim
+[init]
+    defaultBranch = main
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+    required = true
+[color]
+	ui = auto
+[branch]
+	sort = -committerdate
+[fetch]
+    all = true
+[pull]
+	rebase = true
 [alias]
     sl = stash list --date=relative
-    lo = log --graph --pretty=format:'%Cred%h%Creset %C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+    graph = log --graph --pretty=format:'%Cred%h%Creset %C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+[gpg "ssh"]
+	allowedSignersFile = ~/.config/git/allowed_signers
