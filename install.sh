@@ -368,8 +368,8 @@ echo "-------------------------"
 echo "Done. All these changes require a logout/restart to take effect."
 echo "-------------------------"
 
-#read -n 1 -r -p "Ready? [y/N]" response
-#case $response in
-#    [yY]) echo ""; osascript -e 'tell app "System Events" to restart';;
-#    *) echo "ok."; exit 0;;
-#esac
+read -n 1 -r -p "Ready? [y/N]" response
+case $response in
+    [yY]) echo ""; osascript -e 'tell app "System Events" to restart';;
+    *) echo "ok."; exit 0;;
+esac
