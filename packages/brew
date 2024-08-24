@@ -58,6 +58,7 @@ sdl2
 sdl2_image
 sdl2_mixer
 sdl2_ttf
+smudge/smudge/nightlight
 ssh-copy-id
 stow
 stripe-cli

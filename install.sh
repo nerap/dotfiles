@@ -84,6 +84,12 @@ git clone https://github.com/romkatv/zsh-defer.git ~/tools/zsh-defer
 
 
 echo ""
+echo "----- conf nightlight -----"
+nightlight temp 100
+nightlight schedule 00:00 23:59
+
+
+echo ""
 echo "----- setup: htop -----"
 
 if [[ "$(type -P $binroot/htop)" ]] && [[ "$(stat -L -f "%Su:%Sg" "$binroot/htop")" != "root:wheel" || ! "$(($(stat -L -f "%DMp" "$binroot/htop") & 4))" ]]; then
