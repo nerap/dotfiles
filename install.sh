@@ -343,12 +343,18 @@ defaults write com.apple.ActivityMonitor SortDirection -int 0
 git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
 git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
 
+# Personnal space git clone
+git clone https://github.com/nerap/nvim.git ~/personal/nvim
+git clone https://github.com/nerap/tmux.git ~/personal/tmux
+git clone https://github.com/nerap/zsh.git ~/personal/zsh
+
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/.local/scripts/*
 
 # Stow
 stow --dir="etc" --target=$HOME -S .
-stow --dir="modules" --target=$HOME -S tmux zsh
+stow --dir="~/personal " --target=$HOME -S tmux zsh
+stow --dir="~/personal " --target=$HOME/.config -S nvim
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
 
