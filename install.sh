@@ -69,6 +69,10 @@ echo "----- default browser -----"
 # Remove default browser pop-up in the future
 defaultbrowser arc
 
+echo ""
+echo "----- setup: zsh -----"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
 
 echo ""
 echo "----- setup: htop -----"
