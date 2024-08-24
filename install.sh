@@ -35,6 +35,12 @@ fi
 
 
 echo ""
+echo "----- default dirs -----"
+
+mdkir -p ~/personal ~/work ~/vaults ~/tools
+
+
+echo ""
 echo "----- install homebrew -----"
 
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -72,6 +78,7 @@ defaultbrowser arc
 echo ""
 echo "----- setup: zsh -----"
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+git clone https://github.com/romkatv/zsh-defer.git ~/tools/zsh-defer
 
 
 echo ""
@@ -111,12 +118,6 @@ echo ""
 echo "----- lua magick -----"
 
 luarocks --local --lua-version=5.1 install magick
-
-
-echo ""
-echo "----- default dirs -----"
-
-mdkir -p ~/personal ~/work ~/vaults
 
 
 echo ""
