@@ -10,3 +10,9 @@
 [submodule "stow/.config/tmux-plugins/tmux-resurrect"]
 	path = stow/.config/tmux-plugins/tmux-resurrect
 	url = https://github.com/tmux-plugins/tmux-resurrect
+[submodule "etc/.config/tmux-plugins/tmux-resurrect"]
+	path = etc/.config/tmux-plugins/tmux-resurrect
+	url = https://github.com/tmux-plugins/tmux-resurrect
+[submodule "etc/.config/nvim"]
+	path = etc/.config/nvim
+	url = https://github.com/nerap/nvim
