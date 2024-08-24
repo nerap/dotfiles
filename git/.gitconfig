@@ -1,12 +1,11 @@
 [user]
 	email = 44852526+nerap@users.noreply.github.com
-	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKFVvdS1YvubEa032rQd9IH0wbmDhP3MPnAB8mYUQOd2 raph.en223@gmail.com
-
 	name = nerap
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKFVvdS1YvubEa032rQd9IH0wbmDhP3MPnAB8mYUQOd2 raph.en223@gmail.com
 [commit]
 	gpgsign = true
 [gpg]
-	program = gpg
+    program = gpg
 	format = ssh
     eol = lfo
 	autocrlf = false
@@ -19,10 +18,20 @@
 	# Make `git rebase` safer on OS X
 	# More info: <http://www.git-tower.com/blog/make-git-rebase-safe-on-osx/>
 	trustctime = false
-	editor = vim
-
+    editor = vim
+[init]
+    defaultBranch = main
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+    required = true
 [color]
 	ui = auto
+[branch]
+	sort = -committerdate
+[fetch]
+    all = true
 [pull]
 	rebase = true
 [alias]

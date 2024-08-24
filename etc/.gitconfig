@@ -1,0 +1,11 @@
+[user]
+	email = 44852526+nerap@users.noreply.github.com
+	signingkey = 88CEAE3C5F965736
+	name = nerap
+[commit]
+	gpgsign = true
+[gpg]
+	program = gpg
+[alias]
+    sl = stash list --date=relative
+    lo = log --graph --pretty=format:'%Cred%h%Creset %C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
