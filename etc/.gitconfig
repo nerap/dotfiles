@@ -1,7 +1,7 @@
 [user]
 	email = 44852526+nerap@users.noreply.github.com
 	name = nerap
-	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKFVvdS1YvubEa032rQd9IH0wbmDhP3MPnAB8mYUQOd2 raph.en223@gmail.com
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP+O7t3VNOQE5yREwJU3UbIpGlKafP59uR9VJFhOux6d
 [commit]
 	gpgsign = true
 [gpg]
@@ -39,3 +39,4 @@
     graph = log --graph --pretty=format:'%Cred%h%Creset %C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
 [gpg "ssh"]
 	allowedSignersFile = ~/.config/git/allowed_signers
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign

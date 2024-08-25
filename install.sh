@@ -132,7 +132,8 @@ echo ""
 echo "----- setup mac system -----"
 
 sudo -v
-csrutil disable
+# Need to be in recovery mode
+#csrutil disable
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
 ###############################################################################
@@ -368,16 +369,21 @@ git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
 git clone https://github.com/nerap/nvim.git ~/personal/nvim
 git clone https://github.com/nerap/tmux.git ~/personal/tmux
 git clone https://github.com/nerap/zsh.git ~/personal/zsh
+git clone https://github.com/nerap/yabai.git ~/personal/yabai
+git clone https://github.com/nerap/skhd.git ~/personal/skhd
 
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/.local/scripts/*
 
 # Create nvim dir if not exists
 mkdir -p ~/.config/nvim
+mkdir -p ~/.config/yabai
+mkdir -p ~/.config/skhd
 
 # Stow
 stow --dir="etc" --target=$HOME -S .
 stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
+stow --dir="$HOME/personal" --target="$HOME/.config" -S yabai skhd
 stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))

@@ -1,3 +1,4 @@
+1password-cli
 ack
 autoconf
 automake
@@ -30,6 +31,7 @@ htop-osx
 hub
 ImageMagick
 jq
+koekeishiya/formulae/skhd
 koekeishiya/formulae/yabai
 less
 libtool
