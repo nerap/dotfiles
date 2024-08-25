@@ -77,6 +77,14 @@ echo "----- default browser -----"
 # Remove default browser pop-up in the future
 defaultbrowser arc
 
+
+echo ""
+echo "----- yabai / skhd -----"
+sudo nvram boot-args=-arm64e_preview_abi
+echo "$(whoami) ALL=(root) NOPASSWD: sha256:$(shasum -a 256 $(which yabai) | cut -d " " -f 1) $(which yabai) --load-sa" | sudo tee /private/etc/sudoers.d/yabai
+yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
+sudo yabai --load-sa
+
 echo ""
 echo "----- init sketchybar -----"
 brew services start sketchybar
