@@ -52,6 +52,8 @@ brew upgrade
 echo ""
 echo "----- brew: install -----"
 
+# Must be done before installing packages
+brew tap FelixKratz/formulae
 xargs brew install < "$DOTFILES_DIR/packages/brew"
 brew cleanup
 
@@ -74,6 +76,10 @@ echo ""
 echo "----- default browser -----"
 # Remove default browser pop-up in the future
 defaultbrowser arc
+
+echo ""
+echo "----- init sketchybar -----"
+brew services start sketchybar
 
 echo ""
 echo "----- setup: zsh -----"
@@ -279,6 +285,9 @@ defaults write com.apple.finder FXInfoPanesExpanded -dict General -bool true Ope
 
 ########## Dock, Dashboard, and hot corners
 
+# Hide menu bar
+defaults write NSGlobalDomain _HIHideMenuBar -bool true
+
 # Hide Dock
 defaults write com.apple.dock autohide -bool true && killall Dock
 defaults write com.apple.dock autohide-delay -float 1000 && killall Dock
@@ -371,6 +380,7 @@ git clone https://github.com/nerap/tmux.git ~/personal/tmux
 git clone https://github.com/nerap/zsh.git ~/personal/zsh
 git clone https://github.com/nerap/yabai.git ~/personal/yabai
 git clone https://github.com/nerap/skhd.git ~/personal/skhd
+git clone https://github.com/nerap/sketchybar.git ~/personal/sketchybar
 
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/.local/scripts/*
@@ -379,11 +389,14 @@ chmod +x ~/personal/dotfiles/etc/.local/scripts/*
 mkdir -p ~/.config/nvim
 mkdir -p ~/.config/yabai
 mkdir -p ~/.config/skhd
+mkdir -p ~/.config/sketchybar
 
 # Stow
 stow --dir="etc" --target=$HOME -S .
 stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
-stow --dir="$HOME/personal" --target="$HOME/.config" -S yabai skhd
+stow --dir="$HOME/personal" --target="$HOME/.config/yabai" -S yabai
+stow --dir="$HOME/personal" --target="$HOME/.config/skhd" -S skhd
+stow --dir="$HOME/personal" --target="$HOME/.config/sketchybar" -S sketchybar
 stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))

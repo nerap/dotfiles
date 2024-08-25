@@ -6,6 +6,7 @@ avrdude
 bash
 bash-completion
 bat
+borders
 cloc
 cmake
 coreutils
@@ -48,6 +49,7 @@ nmap
 node
 nvim
 neovim
+nowplaying-cli
 p7zip
 pbzip2
 pigz
@@ -60,11 +62,13 @@ sdl2
 sdl2_image
 sdl2_mixer
 sdl2_ttf
+sketchybar
 smudge/smudge/nightlight
 ssh-copy-id
 stow
 stripe-cli
 svn
+switchaudio-osx
 the_silver_searcher
 thefuck
 transmission
