@@ -244,7 +244,7 @@ defaults write com.apple.screencapture disable-shadow -bool true
 defaults write com.apple.screensaver askForPassword -int 1
 defaults write com.apple.screensaver askForPasswordDelay -int 0
 
-######## Findepple.screensaver askForPasswordDelay -int 0r
+######### Findepple.screensaver askForPasswordDelay -int 0r
 
 #pple.screensaver askForPasswordDelay -int 0 Finder: show status bar
 defaults write com.apple.finder ShowStatusBar -bool true
@@ -389,6 +389,7 @@ git clone https://github.com/nerap/zsh.git ~/personal/zsh
 git clone https://github.com/nerap/yabai.git ~/personal/yabai
 git clone https://github.com/nerap/skhd.git ~/personal/skhd
 git clone https://github.com/nerap/sketchybar.git ~/personal/sketchybar
+git clone https://github.com/nerap/qmk_firmware .git ~/personal/qmk_firmware  --depth 1
 
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/.local/scripts/*
