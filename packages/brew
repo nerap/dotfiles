@@ -56,6 +56,7 @@ pigz
 plzip
 poetry
 prettyping
+pyenv
 python3
 sqlite
 sdl2
