@@ -55,11 +55,10 @@ nowplaying-cli
 p7zip
 pbzip2
 pigz
+pipx
 plzip
-poetry
 prettyping
 pyenv
-python3
 sqlite
 sdl2
 sdl2_image
