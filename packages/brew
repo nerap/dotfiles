@@ -48,6 +48,7 @@ ncdu
 neofetch
 nmap
 node
+nvm
 nvim
 neovim
 nowplaying-cli
@@ -69,7 +70,6 @@ smudge/smudge/nightlight
 ssh-copy-id
 stow
 stripe-cli
-svn
 switchaudio-osx
 terraform
 the_silver_searcher
