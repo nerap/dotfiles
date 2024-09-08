@@ -2,21 +2,13 @@
 
 # VARS
 START_TIME=$SECONDS
+MACHINE_NAME=nerap
 DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 echo ""
 echo "---------- dotfiles --------"
 echo ""
 echo "This will install & setup all the system."
-
-read -n 1 -r -p "Ready? [y/N]" response
-case $response in
-    [yY]) echo "";;
-    *) exit 1;;
-esac
-
-read -e -p "Please enter machine name: " machine_name
-MACHINE_NAME=${machine_name:-nerap}
 
 echo ""
 echo "----- XCode Command Line Tools -----"
@@ -33,17 +25,17 @@ if ! xcode-select --print-path &> /dev/null; then
     print_result $? 'Agree with the XCode Command Line Tools licence'
 fi
 
-
 echo ""
 echo "----- default dirs -----"
 
-mdkir -p ~/personal ~/work ~/vaults ~/tools
+mkdir -p ~/personal ~/work ~/vaults ~/tools
 
 
 echo ""
 echo "----- install homebrew -----"
 
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+eval "$(/opt/homebrew/bin/brew shellenv)"
 brew doctor
 brew update
 brew upgrade
@@ -63,20 +55,19 @@ echo "----- brew: cask -----"
 
 brew tap homebrew/cask
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
-xargs brew install --cask < "$DOTFILES_DIR/packages/cask"
+xargs brew install < "$DOTFILES_DIR/packages/cask"
 
 
 echo ""
 echo "----- brew: fonts -----"
 
-xargs brew install --cask < "$DOTFILES_DIR/packages/fonts"
+xargs brew install < "$DOTFILES_DIR/packages/fonts"
 
 
 echo ""
 echo "----- default browser -----"
 # Remove default browser pop-up in the future
 defaultbrowser arc
-
 
 echo ""
 echo "----- yabai / skhd -----"
@@ -102,6 +93,38 @@ echo "----- conf nightlight -----"
 nightlight temp 100
 nightlight schedule 00:00 23:59
 
+# nvim personal repo must have
+git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
+git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
+
+# Personnal space git clone
+git clone https://github.com/nerap/nvim.git ~/personal/nvim
+git clone https://github.com/nerap/tmux.git ~/personal/tmux
+git clone https://github.com/nerap/zsh.git ~/personal/zsh
+git clone https://github.com/nerap/yabai.git ~/personal/yabai
+git clone https://github.com/nerap/skhd.git ~/personal/skhd
+git clone https://github.com/nerap/sketchybar.git ~/personal/sketchybar
+git clone https://github.com/nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
+
+# Giving execution rights to scripts
+chmod +x ~/personal/dotfiles/etc/.local/scripts/*
+
+# Create nvim dir if not exists
+mkdir -p ~/.config/nvim
+mkdir -p ~/.config/yabai
+mkdir -p ~/.config/skhd
+mkdir -p ~/.config/sketchybar
+
+# Remove default zshrc
+rm  ~/.zshrc
+
+# Stow
+stow --dir="etc" --target=$HOME -S .
+stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
+stow --dir="$HOME/personal" --target="$HOME/.config/yabai" -S yabai
+stow --dir="$HOME/personal" --target="$HOME/.config/skhd" -S skhd
+stow --dir="$HOME/personal" --target="$HOME/.config/sketchybar" -S sketchybar
+stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
 
 echo ""
 echo "----- setup: htop -----"
@@ -378,36 +401,6 @@ defaults write com.apple.ActivityMonitor SortDirection -int 0
 
 #################################################################
 
-# nvim personal repo must have
-git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
-git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
-
-# Personnal space git clone
-git clone https://github.com/nerap/nvim.git ~/personal/nvim
-git clone https://github.com/nerap/tmux.git ~/personal/tmux
-git clone https://github.com/nerap/zsh.git ~/personal/zsh
-git clone https://github.com/nerap/yabai.git ~/personal/yabai
-git clone https://github.com/nerap/skhd.git ~/personal/skhd
-git clone https://github.com/nerap/sketchybar.git ~/personal/sketchybar
-git clone https://github.com/nerap/qmk_firmware .git ~/personal/qmk_firmware  --depth 1
-
-# Giving execution rights to scripts
-chmod +x ~/personal/dotfiles/etc/.local/scripts/*
-
-# Create nvim dir if not exists
-mkdir -p ~/.config/nvim
-mkdir -p ~/.config/yabai
-mkdir -p ~/.config/skhd
-mkdir -p ~/.config/sketchybar
-
-# Stow
-stow --dir="etc" --target=$HOME -S .
-stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
-stow --dir="$HOME/personal" --target="$HOME/.config/yabai" -S yabai
-stow --dir="$HOME/personal" --target="$HOME/.config/skhd" -S skhd
-stow --dir="$HOME/personal" --target="$HOME/.config/sketchybar" -S sketchybar
-stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
-
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
 
 echo ""
@@ -421,8 +414,3 @@ echo "-------------------------"
 echo "Done. All these changes require a logout/restart to take effect."
 echo "-------------------------"
 
-read -n 1 -r -p "Ready? [y/N]" response
-case $response in
-    [yY]) echo ""; osascript -e 'tell app "System Events" to restart';;
-    *) echo "ok."; exit 0;;
-esac
