@@ -95,16 +95,17 @@ nightlight schedule 00:00 23:59
 
 # nvim personal repo must have
 git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
-git clone https://github.com/nerap/gitmoji.nvim.git ~/personal/gitmoji
+# Personal too
+git clone git@github.com:nerap/gitmoji.nvim.git ~/personal/gitmoji
 
 # Personnal space git clone
-git clone https://github.com/nerap/nvim.git ~/personal/nvim
-git clone https://github.com/nerap/tmux.git ~/personal/tmux
-git clone https://github.com/nerap/zsh.git ~/personal/zsh
-git clone https://github.com/nerap/yabai.git ~/personal/yabai
-git clone https://github.com/nerap/skhd.git ~/personal/skhd
-git clone https://github.com/nerap/sketchybar.git ~/personal/sketchybar
-git clone https://github.com/nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
+git clone git@github.com:/github.com/nerap/nvim.git ~/personal/nvim
+git clone git@github.com:/github.com/nerap/tmux.git ~/personal/tmux
+git clone git@github.com:/github.com/nerap/zsh.git ~/personal/zsh
+git clone git@github.com:/github.com/nerap/yabai.git ~/personal/yabai
+git clone git@github.com:/github.com/nerap/skhd.git ~/personal/skhd
+git clone git@github.com:/github.com/nerap/sketchybar.git ~/personal/sketchybar
+git clone git@github.com:/github.com/nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
 
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/.local/scripts/*
