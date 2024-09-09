@@ -59,6 +59,7 @@ pipx
 plzip
 prettyping
 pyenv
+ripgrep
 sqlite
 sdl2
 sdl2_image
