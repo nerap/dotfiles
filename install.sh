@@ -93,18 +93,24 @@ echo "----- conf nightlight -----"
 nightlight temp 100
 nightlight schedule 00:00 23:59
 
+
+echo ""
+echo "----- setup: nvim -----"
 # nvim personal repo must have
 git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
 # Personal too
 git clone git@github.com:nerap/gitmoji.nvim.git ~/personal/gitmoji
 
+
+echo ""
+echo "----- setup: tmux -----"
+git clone https://github.com/tmux-plugins/tmux-resurrect.git ~/personal/tmux-resurrect
+
 # Personnal space git clone
 git clone git@github.com:/github.com/nerap/nvim.git ~/personal/nvim
 git clone git@github.com:/github.com/nerap/tmux.git ~/personal/tmux
 git clone git@github.com:/github.com/nerap/zsh.git ~/personal/zsh
-git clone git@github.com:/github.com/nerap/yabai.git ~/personal/yabai
-git clone git@github.com:/github.com/nerap/skhd.git ~/personal/skhd
-git clone git@github.com:/github.com/nerap/sketchybar.git ~/personal/sketchybar
+git clone git@github.com:/github.com/nerap/aerospace.git ~/personal/aerospace
 git clone git@github.com:/github.com/nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
 
 # Giving execution rights to scripts
@@ -112,9 +118,7 @@ chmod +x ~/personal/dotfiles/etc/.local/scripts/*
 
 # Create nvim dir if not exists
 mkdir -p ~/.config/nvim
-mkdir -p ~/.config/yabai
-mkdir -p ~/.config/skhd
-mkdir -p ~/.config/sketchybar
+mkdir -p ~/.config/aerospace
 
 # Remove default zshrc
 rm  ~/.zshrc
@@ -122,10 +126,8 @@ rm  ~/.zshrc
 # Stow
 stow --dir="etc" --target=$HOME -S .
 stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
-stow --dir="$HOME/personal" --target="$HOME/.config/yabai" -S yabai
-stow --dir="$HOME/personal" --target="$HOME/.config/skhd" -S skhd
-stow --dir="$HOME/personal" --target="$HOME/.config/sketchybar" -S sketchybar
 stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
+stow --dir="$HOME/personal" --target="$HOME/.config/aerospace" -S aerospace
 
 echo ""
 echo "----- setup: htop -----"
