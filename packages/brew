@@ -58,6 +58,7 @@ pipx
 plzip
 prettyping
 pyenv
+redis
 ripgrep
 sqlite
 sdl2
