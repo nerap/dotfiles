@@ -28,8 +28,7 @@ fi
 echo ""
 echo "----- default dirs -----"
 
-mkdir -p ~/personal ~/work ~/vaults ~/tools
-
+mkdir -p ~/personal ~/work ~/tools
 
 echo ""
 echo "----- install homebrew -----"
@@ -104,7 +103,7 @@ git clone git@github.com:nerap/gitmoji.nvim.git ~/personal/gitmoji
 
 echo ""
 echo "----- setup: tmux -----"
-git clone https://github.com/tmux-plugins/tmux-resurrect.git ~/personal/tmux-resurrect
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 # Personnal space git clone
 git clone git@github.com:/github.com/nerap/nvim.git ~/personal/nvim
@@ -119,6 +118,7 @@ chmod +x ~/personal/dotfiles/etc/.local/scripts/*
 # Create nvim dir if not exists
 mkdir -p ~/.config/nvim
 mkdir -p ~/.config/aerospace
+mkdir -p ~/.config/alacritty
 
 # Remove default zshrc
 rm  ~/.zshrc
@@ -128,6 +128,7 @@ stow --dir="etc" --target=$HOME -S .
 stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
 stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
 stow --dir="$HOME/personal" --target="$HOME/.config/aerospace" -S aerospace
+stow --dir="$HOME/personal" --target="$HOME/.config/alacritty" -S alacritty
 
 echo ""
 echo "----- setup: htop -----"
