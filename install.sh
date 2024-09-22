@@ -69,17 +69,6 @@ echo "----- default browser -----"
 defaultbrowser arc
 
 echo ""
-echo "----- yabai / skhd -----"
-sudo nvram boot-args=-arm64e_preview_abi
-echo "$(whoami) ALL=(root) NOPASSWD: sha256:$(shasum -a 256 $(which yabai) | cut -d " " -f 1) $(which yabai) --load-sa" | sudo tee /private/etc/sudoers.d/yabai
-yabai -m signal --add event=dock_did_restart action="sudo yabai --load-sa"
-sudo yabai --load-sa
-
-echo ""
-echo "----- init sketchybar -----"
-brew services start sketchybar
-
-echo ""
 echo "----- setup: zsh -----"
 # Oh my zsh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
@@ -91,15 +80,6 @@ echo ""
 echo "----- conf nightlight -----"
 nightlight temp 100
 nightlight schedule 00:00 23:59
-
-
-echo ""
-echo "----- setup: nvim -----"
-# nvim personal repo must have
-git clone https://github.com/ThePrimeagen/harpoon.git -b harpoon2 ~/personal/harpoon
-# Personal too
-git clone git@github.com:nerap/gitmoji.nvim.git ~/personal/gitmoji
-
 
 echo ""
 echo "----- setup: tmux -----"
