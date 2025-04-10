@@ -86,11 +86,11 @@ echo "----- setup: tmux -----"
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 # Personnal space git clone
-git clone git@github.com:/github.com/nerap/nvim.git ~/personal/nvim
-git clone git@github.com:/github.com/nerap/tmux.git ~/personal/tmux
-git clone git@github.com:/github.com/nerap/zsh.git ~/personal/zsh
-git clone git@github.com:/github.com/nerap/aerospace.git ~/personal/aerospace
-git clone git@github.com:/github.com/nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
+git clone git@github.com:nerap/nvim.git ~/personal/nvim
+git clone git@github.com:nerap/tmux.git ~/personal/tmux
+git clone git@github.com:nerap/zsh.git ~/personal/zsh
+git clone git@github.com:nerap/aerospace.git ~/personal/aerospace
+git clone git@github.com:nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
 
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/.local/scripts/*
@@ -129,19 +129,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 echo ""
 echo "----- nvm -----"
 
-nvm install v18.20.0
-nvm alias default v18.20.0
-
-
-echo ""
-echo "----- miniconde3 -----"
-
-mkdir -p ~/personal/miniconda3
-curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o ~/personal/miniconda3/miniconda.sh
-bash ~/personal/miniconda3/miniconda.sh -b -u -p ~/personal/miniconda3
-rm -rf ~/personal/miniconda3/miniconda.sh
-export PATH=$PATH:~/personal/miniconda3/bin
-
+nvm install v22
+nvm alias default v22
 
 echo ""
 echo "----- lua magick -----"
