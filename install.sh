@@ -3,7 +3,7 @@
 # VARS
 START_TIME=$SECONDS
 MACHINE_NAME=nerap
-DOTFILES_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DOTFILES_DIR="$( cd "$( dirname "${(%):-%x}" )" && pwd )"
 
 echo ""
 echo "---------- dotfiles --------"
@@ -26,15 +26,16 @@ if ! xcode-select --print-path &> /dev/null; then
 fi
 
 echo ""
-echo "----- default dirs -----"
-
-mkdir -p ~/personal ~/work ~/tools
-
-echo ""
 echo "----- install homebrew -----"
 
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/opt/homebrew/bin/brew shellenv)"
+if ! command -v brew &> /dev/null; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+    echo "Homebrew is already installed."
+fi
+
 brew doctor
 brew update
 brew upgrade
@@ -44,7 +45,6 @@ echo ""
 echo "----- brew: install -----"
 
 # Must be done before installing packages
-brew tap FelixKratz/formulae
 xargs brew install < "$DOTFILES_DIR/packages/brew"
 brew cleanup
 
@@ -52,9 +52,8 @@ brew cleanup
 echo ""
 echo "----- brew: cask -----"
 
-brew tap homebrew/cask
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
-xargs brew install < "$DOTFILES_DIR/packages/cask"
+xargs brew install --cask < "$DOTFILES_DIR/packages/cask"
 
 
 echo ""
@@ -70,17 +69,56 @@ open -W /Applications/1Password.app
 # Reopen for ssh cloning
 open /Applications/1Password.app
 
-echo ""
-echo "----- configure DBeaver -----"
-# On open import all file from prefereces/dbeaver
-# No cli available for this behavior :(
-open -W /Applications/DBeaver.app
+echo "---- Verifying 1Password SSH agent ----"
+# Ensure 1Password is fully initialized
+sleep 3
+# Test the SSH connection
+ssh -T git@github.com || {
+  echo "SSH connection to GitHub failed. Please ensure 1Password is properly set up."
+  echo "You may need to manually approve the SSH key in 1Password and try again."
+  read -p "Press Enter to continue after you've verified 1Password SSH access..."
+}
 
+# Check if 1Password CLI is installed, install if needed
+if ! command -v op &> /dev/null; then
+    echo "Installing 1Password CLI..."
+    brew install 1password-cli
+fi
 
-echo ""
-echo "----- default browser -----"
-# Remove default browser pop-up in the future
-defaultbrowser arc
+# Create or update SSH config to use 1Password SSH agent
+mkdir -p ~/.ssh
+touch ~/.ssh/config
+
+# Check if 1Password SSH agent config is already present
+if ! grep -q "1Password SSH agent" ~/.ssh/config; then
+    echo "Configuring SSH to use 1Password SSH agent..."
+    cat << 'EOF' >> ~/.ssh/config
+
+# 1Password SSH agent configuration
+Host *
+    IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+EOF
+fi
+
+# Configure shell to use 1Password SSH agent
+if [[ "$SHELL" == *"zsh"* ]]; then
+    # For zsh
+    SHELL_RC="$HOME/.zshrc"
+elif [[ "$SHELL" == *"bash"* ]]; then
+    # For bash
+    SHELL_RC="$HOME/.bashrc"
+fi
+
+if [ -n "$SHELL_RC" ]; then
+    if ! grep -q "SSH_AUTH_SOCK" "$SHELL_RC"; then
+        echo "Configuring shell to use 1Password SSH agent..."
+        cat << 'EOF' >> "$SHELL_RC"
+
+# 1Password SSH agent
+export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+EOF
+    fi
+fi
 
 echo ""
 echo "----- setup: zsh -----"
@@ -89,14 +127,24 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/too
 # Defer plugin
 git clone https://github.com/romkatv/zsh-defer.git ~/tools/zsh-defer
 
+echo "1Password SSH agent configuration complete!"
+
 
 echo ""
-echo "----- conf nightlight -----"
-nightlight temp 100
-nightlight schedule 00:00 23:59
+echo "----- Preparing for stow -----"
+[ -f ~/.zshrc ] && rm ~/.zshrc
+
+# Pre-Stow
+stow --dir="etc" --target=$HOME -S .
+
+echo ""
+echo "----- default dirs -----"
+
+mkdir -p ~/personal ~/work ~/tools
 
 echo ""
 echo "----- setup: tmux -----"
+
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 # Personnal space git clone
@@ -114,43 +162,86 @@ mkdir -p ~/.config/nvim
 mkdir -p ~/.config/aerospace
 mkdir -p ~/.config/alacritty
 
-# Remove default zshrc
-rm  ~/.zshrc
-
-# Stow
-stow --dir="etc" --target=$HOME -S .
+# Stow everything else
 stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
 stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
 stow --dir="$HOME/personal" --target="$HOME/.config/aerospace" -S aerospace
 stow --dir="$HOME/personal" --target="$HOME/.config/alacritty" -S alacritty
 
-echo ""
-echo "----- setup: htop -----"
-
-if [[ "$(type -P $binroot/htop)" ]] && [[ "$(stat -L -f "%Su:%Sg" "$binroot/htop")" != "root:wheel" || ! "$(($(stat -L -f "%DMp" "$binroot/htop") & 4))" ]]; then
-    echo "- Updating htop permissions"
-    sudo chown root:wheel "$binroot/htop"
-    sudo chmod u+s "$binroot/htop"
-fi
-
 
 echo ""
 echo "----- rust -----"
+if ! command -v rustc &> /dev/null; then
+    echo "Installing Rust..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+else
+    echo "Rust is already installed."
+    rustc --version
+fi
 
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+echo ""
+echo "----- configure DBeaver -----"
+# On open import all file from prefereces/dbeaver
+# No cli available for this behavior :(
+open -W /Applications/DBeaver.app
 
+echo ""
+echo "----- default browser -----"
+if ! command -v defaultbrowser &> /dev/null; then
+    echo "Installing defaultbrowser..."
+    brew install defaultbrowser
+fi
+# Remove default browser pop-up in the future
+defaultbrowser browser
+
+
+echo ""
+echo "----- conf nightlight -----"
+if ! command -v nightlight &> /dev/null; then
+    echo "Installing nightlight..."
+    brew install smudge/smudge/nightlight
+fi
+nightlight temp 100
+nightlight schedule 00:00 23:59
 
 echo ""
 echo "----- nvm -----"
+if [ ! -d "$HOME/.nvm" ]; then
+    echo "Installing NVM..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
 
-nvm install v22
-nvm alias default v22
+    # Load NVM for the current script
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+else
+    echo "NVM is already installed."
+    # Load NVM for the current script
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+fi
+
+# Now install Node
+if ! nvm ls | grep -q "v22"; then
+    nvm install v22
+    nvm alias default v22
+else
+    echo "Node v22 is already installed."
+fi
 
 echo ""
 echo "----- lua magick -----"
+if ! command -v luarocks &> /dev/null; then
+    echo "Installing LuaRocks..."
+    brew install luarocks
+fi
 
-luarocks --local --lua-version=5.1 install magick
-
+# Check if magick is already installed for Lua 5.1
+if ! luarocks --lua-version=5.1 list | grep -q "magick"; then
+    echo "Installing magick for Lua 5.1..."
+    luarocks --local --lua-version=5.1 install magick
+else
+    echo "Magick is already installed for Lua 5.1."
+fi
 
 echo ""
 echo "----- setup mac system -----"
