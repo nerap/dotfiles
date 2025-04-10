@@ -1,8 +1,28 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <?p2f version='1.0.0'?>
 <p2f version='1.0.0'>
-  <ius size='1'>
+  <ius size='5'>
+    <iu id='com.github.eclipseuitheme.themes.feature.feature.group' name='Eclipse Moonrise UI Theme' version='0.8.9.201404052318'>
+      <repositories size='1'>
+        <repository location='https://raw.github.com/guari/eclipse-ui-theme/master/com.github.eclipseuitheme.themes.updatesite'/>
+      </repositories>
+    </iu>
+    <iu id='org.eclipse.epp.mpc.feature.group' name='Marketplace Client' version='1.10.3.v20240228-1000'>
+      <repositories size='1'>
+        <repository location='https://download.eclipse.org/releases/2024-06/'/>
+      </repositories>
+    </iu>
+    <iu id='com.github.matf.relativenumberruler.feature.feature.group' name='Relative Line Number Ruler Feature' version='1.4.0.202309041254'>
+      <repositories size='1'>
+        <repository location='https://matf.github.io/relativenumberruler/updatesite/'/>
+      </repositories>
+    </iu>
     <iu id='net.sourceforge.vrapper.feature.group' name='Vrapper' version='0.74.0'>
+      <repositories size='1'>
+        <repository location='https://vrapper.sourceforge.net/update-site/stable'/>
+      </repositories>
+    </iu>
+    <iu id='net.sourceforge.vrapper.plugin.indenttextobj.feature.group' name='Vrapper - vim-indent-object.vim Plugin (Optional)' version='0.74.0'>
       <repositories size='1'>
         <repository location='https://vrapper.sourceforge.net/update-site/stable'/>
       </repositories>

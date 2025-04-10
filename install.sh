@@ -152,6 +152,7 @@ git clone git@github.com:nerap/nvim.git ~/personal/nvim
 git clone git@github.com:nerap/tmux.git ~/personal/tmux
 git clone git@github.com:nerap/zsh.git ~/personal/zsh
 git clone git@github.com:nerap/aerospace.git ~/personal/aerospace
+git clone git@github.com:nerap/alacritty.git ~/personal/alacritty
 git clone git@github.com:nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
 
 # Giving execution rights to scripts
