@@ -64,6 +64,13 @@ xargs brew install < "$DOTFILES_DIR/packages/fonts"
 
 
 echo ""
+echo "---- 1Password ----"
+# For the sync to CLI then close
+open -W /Applications/1Password.app
+# Reopen for ssh cloning
+open /Applications/1Password.app
+
+echo ""
 echo "----- default browser -----"
 # Remove default browser pop-up in the future
 defaultbrowser arc
