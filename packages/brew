@@ -73,6 +73,7 @@ smudge/smudge/nightlight
 ssh-copy-id
 stow
 stripe-cli
+supabase
 switchaudio-osx
 terraform
 the_silver_searcher

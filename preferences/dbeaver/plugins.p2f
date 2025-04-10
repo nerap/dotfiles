@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<?p2f version='1.0.0'?>
+<p2f version='1.0.0'>
+  <ius size='1'>
+    <iu id='net.sourceforge.vrapper.feature.group' name='Vrapper' version='0.74.0'>
+      <repositories size='1'>
+        <repository location='https://vrapper.sourceforge.net/update-site/stable'/>
+      </repositories>
+    </iu>
+  </ius>
+</p2f>
