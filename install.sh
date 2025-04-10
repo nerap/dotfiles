@@ -71,6 +71,13 @@ open -W /Applications/1Password.app
 open /Applications/1Password.app
 
 echo ""
+echo "----- configure DBeaver -----"
+# On open import all file from prefereces/dbeaver
+# No cli available for this behavior :(
+open -W /Applications/DBeaver.app
+
+
+echo ""
 echo "----- default browser -----"
 # Remove default browser pop-up in the future
 defaultbrowser arc
