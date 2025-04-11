@@ -135,12 +135,12 @@ echo "----- Preparing for stow -----"
 [ -f ~/.zshrc ] && rm ~/.zshrc
 
 # Pre-Stow
-stow --dir="etc" --target=$HOME -S .
+stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
 
 echo ""
 echo "----- default dirs -----"
 
-mkdir -p ~/personal ~/work ~/tools
+mkdir -p ~/personal ~/config ~/work ~/tools
 
 echo ""
 echo "----- setup: tmux -----"
@@ -164,10 +164,9 @@ mkdir -p ~/.config/aerospace
 mkdir -p ~/.config/alacritty
 
 # Stow everything else
-stow --dir="$HOME/personal" --target=$HOME -S tmux zsh
-stow --dir="$HOME/personal" --target="$HOME/.config/nvim" -S nvim
-stow --dir="$HOME/personal" --target="$HOME/.config/aerospace" -S aerospace
-stow --dir="$HOME/personal" --target="$HOME/.config/alacritty" -S alacritty
+stow --dir="$HOME/config" --target="$HOME/.config/nvim" -S nvim
+stow --dir="$HOME/config" --target="$HOME/.config/aerospace" -S aerospace
+stow --dir="$HOME/config" --target="$HOME/.config/alacritty" -S alacritty
 
 
 echo ""
