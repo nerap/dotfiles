@@ -170,7 +170,15 @@ stow --dir="$HOME/config" --target="$HOME/.config/alacritty" -S alacritty
 
 
 echo ""
+echo "----- install colima -----"
+
+brew install colima
+brew services start colima
+colima start
+
+echo ""
 echo "----- rust -----"
+
 if ! command -v rustc &> /dev/null; then
     echo "Installing Rust..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh

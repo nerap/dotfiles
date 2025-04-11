@@ -8,6 +8,7 @@ bash-completion
 bat
 cloc
 cmake
+colima
 coreutils
 defaultbrowser
 dfu-programmer
