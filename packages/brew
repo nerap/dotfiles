@@ -6,6 +6,7 @@ avrdude
 bash
 bash-completion
 bat
+bruno
 cloc
 cmake
 colima
