@@ -156,12 +156,14 @@ else
     type=$(echo "$selected" | cut -d'|' -f1)
     path=$(echo "$selected" | cut -d'|' -f2)
 
-    # If it's a bare repo, show worktree picker
+    # If it's a bare repo, auto-select most recent worktree
     if [[ "$type" == "BARE" ]]; then
-        worktree_selected=$(build_worktree_list "$path" | fzf --delimiter='|' --with-nth=2 --prompt="Select worktree > ")
+        # Get most recent worktree (first line from sorted list)
+        worktree_selected=$(build_worktree_list "$path" | head -1)
 
         if [[ -z $worktree_selected ]]; then
-            exit 0
+            echo "No worktrees found for bare repo: $path"
+            exit 1
         fi
 
         selected_path=$(echo "$worktree_selected" | cut -d'|' -f1)
@@ -202,24 +204,18 @@ if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
 fi
 
 if ! tmux has-session -t="$selected_name" 2>/dev/null; then
-    # Create new session with vertical split
+    # Create new session with first window (terminal only)
     tmux new-session -ds "$selected_name" -c "$selected_path"
 
-    # Create vertical split (70/30)
-    tmux split-window -t "$selected_name" -h -p 30 -c "$selected_path"
+    # Window 1: Split for Claude in right pane (70/30)
+    tmux split-window -t "$selected_name:1" -h -p 30 -c "$selected_path" "claude --continue || claude"
 
-    # Left pane: Neovim
-    tmux send-keys -t "$selected_name:0.0" 'nvim' C-m
+    # Create window 2 with nvim
+    tmux new-window -t "$selected_name:2" -c "$selected_path"
+    tmux send-keys -t "$selected_name:2" 'nvim .' C-m
 
-    # Right pane: Claude CLI
-    if [[ -d "$selected_path/.claude" ]]; then
-        tmux send-keys -t "$selected_name:0.1" 'claude --resume' C-m
-    else
-        tmux send-keys -t "$selected_name:0.1" 'claude' C-m
-    fi
-
-    # Focus left pane (Neovim)
-    tmux select-pane -t "$selected_name:0.0"
+    # Focus on window 1 (terminal + claude)
+    tmux select-window -t "$selected_name:1"
 fi
 
 # Attach or switch
