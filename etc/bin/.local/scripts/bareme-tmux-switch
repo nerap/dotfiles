@@ -1,0 +1,83 @@
+#!/bin/bash
+# Bareme tmux worktree session switcher
+# Usage: bareme-tmux-switch [next|prev]
+# IMPORTANT: Switches to tmux SESSION for the worktree (creates if needed)
+
+# Use absolute paths
+TMUX_BIN="/opt/homebrew/bin/tmux"
+BAREME_CLI="$HOME/bin/.local/scripts/bareme"
+DIRECTION="${1:-next}"
+
+# Check if we're running inside tmux
+if [ -z "$TMUX" ]; then
+  echo "Error: This script must be run inside tmux"
+  exit 1
+fi
+
+# Check if bareme exists
+if [ ! -x "$BAREME_CLI" ]; then
+  $TMUX_BIN display-message "⚠ bareme CLI not found: $BAREME_CLI"
+  exit 1
+fi
+
+# Get current pane path
+CURRENT_PATH=$($TMUX_BIN display-message -p '#{pane_current_path}')
+
+# Get next/prev worktree
+RESULT=$($BAREME_CLI "$DIRECTION" "$CURRENT_PATH" 2>&1)
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  # No worktrees found or error
+  $TMUX_BIN display-message "⚠ Error: $RESULT"
+  exit 1
+fi
+
+# Parse result and strip all whitespace/newlines (format: "branch\tpath")
+BRANCH=$(echo "$RESULT" | cut -f1 | tr -d '\n\r')
+WORKTREE_PATH=$(echo "$RESULT" | cut -f2 | tr -d '\n\r')
+
+if [ -z "$BRANCH" ] || [ -z "$WORKTREE_PATH" ]; then
+  $TMUX_BIN display-message "⚠ Failed to parse: $RESULT"
+  exit 1
+fi
+
+# Verify the path exists
+if [ ! -d "$WORKTREE_PATH" ]; then
+  $TMUX_BIN display-message "⚠ Path does not exist: $WORKTREE_PATH"
+  exit 1
+fi
+
+# Get repo name from parent directory (bare repo naming convention)
+PARENT_DIR=$(dirname "$WORKTREE_PATH")
+REPO_NAME=$(basename "$PARENT_DIR" | sed 's/\.git$//' | tr '.' '_')
+SESSION_NAME="${REPO_NAME}_${BRANCH}"
+
+# Check if session exists
+if ! $TMUX_BIN has-session -t "$SESSION_NAME" 2>/dev/null; then
+  # Create new session detached with bareme layout:
+  # Window 1: Terminal (left 70%) + Claude Code (right 30%)
+  # Window 2: Nvim
+
+  $TMUX_BIN new-session -ds "$SESSION_NAME" -c "$WORKTREE_PATH"
+
+  # Window 1: Split for Claude in right pane (70/30)
+  $TMUX_BIN split-window -t "$SESSION_NAME:1" -h -p 30 -c "$WORKTREE_PATH" 'claude --continue || claude'
+
+  # Create window 2 with nvim
+  $TMUX_BIN new-window -t "$SESSION_NAME:2" -c "$WORKTREE_PATH"
+  $TMUX_BIN send-keys -t "$SESSION_NAME:2" 'nvim .' C-m
+
+  # Focus on window 1 (terminal + claude)
+  $TMUX_BIN select-window -t "$SESSION_NAME:1"
+fi
+
+# Switch to the session
+$TMUX_BIN switch-client -t "$SESSION_NAME"
+
+# Show notification
+if [ "$DIRECTION" = "next" ]; then
+  $TMUX_BIN display-message "→ $BRANCH ($SESSION_NAME)"
+else
+  $TMUX_BIN display-message "← $BRANCH ($SESSION_NAME)"
+fi

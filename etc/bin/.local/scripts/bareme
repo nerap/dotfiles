@@ -1,0 +1,73 @@
+#!/opt/homebrew/bin/nvim -l
+-- Bareme CLI - Worktree navigation from command line
+
+-- Add bareme.nvim to runtimepath
+vim.opt.runtimepath:prepend("/Users/nerap/personal/bareme.nvim.git/main")
+
+-- Load CLI module
+local cli = require("bareme.cli")
+
+-- Parse command from _G.arg (global arg table in -l mode)
+local args = _G.arg or {}
+
+local command = args[1] -- First argument is the command
+
+if command == "list" then
+  -- List all visible worktrees
+  local worktrees = cli.list_visible_worktrees()
+  for _, wt in ipairs(worktrees) do
+    print(string.format("%s\t%s", wt.branch, wt.path))
+  end
+
+elseif command == "current" then
+  -- Get current worktree from optional path argument or pwd
+  local path = args[2] or vim.fn.getcwd()
+  local branch, wt_path = cli.get_current_worktree(path)
+  if branch then
+    print(string.format("%s\t%s", branch, wt_path))
+  else
+    -- Not in a worktree
+    os.exit(1)
+  end
+
+elseif command == "next" then
+  -- Get next worktree from current path
+  local current_path = args[2] or vim.fn.getcwd()
+  local branch, path = cli.get_next_worktree(current_path)
+  if branch then
+    print(string.format("%s\t%s", branch, path))
+  else
+    io.stderr:write("No worktrees found\n")
+    os.exit(1)
+  end
+
+elseif command == "prev" then
+  -- Get previous worktree from current path
+  local current_path = args[2] or vim.fn.getcwd()
+  local branch, path = cli.get_prev_worktree(current_path)
+  if branch then
+    print(string.format("%s\t%s", branch, path))
+  else
+    io.stderr:write("No worktrees found\n")
+    os.exit(1)
+  end
+
+else
+  -- Show usage
+  io.stderr:write([[
+Usage: bareme <command> [args]
+
+Commands:
+  list              List all visible worktrees
+  current [path]    Get current worktree (from path or pwd)
+  next [path]       Get next worktree (from path or pwd)
+  prev [path]       Get previous worktree (from path or pwd)
+
+Examples:
+  bareme list
+  bareme current
+  bareme next
+  bareme prev
+]])
+  os.exit(1)
+end
