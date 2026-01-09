@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
 
+# Prevent duplicate instances - use a lock file
+LOCK_FILE="/tmp/tmux-sessionizer.lock"
+if [[ -f "$LOCK_FILE" ]]; then
+    # Another instance is running, exit silently
+    exit 0
+fi
+
+# Create lock file and ensure cleanup on exit
+trap "rm -f '$LOCK_FILE'" EXIT
+touch "$LOCK_FILE"
+
 # Function to check if a directory is a bare git repository
 is_bare_repo() {
     local dir=$1
     [[ -d "$dir" ]] || return 1
+    # Fast check: look for .bare marker file first
+    [[ -f "$dir/.bare" ]] && return 0
+    # Fallback to git check
     local result=$(git -C "$dir" rev-parse --is-bare-repository 2>/dev/null)
     [[ "$result" == "true" ]]
 }
@@ -38,12 +52,17 @@ get_worktrees_from_bare() {
         '
 }
 
-# Get last modification time for git repo (for sorting)
-get_git_mtime() {
+# Get last modification time using filesystem (FAST!)
+get_dir_mtime() {
     local dir=$1
-    # Get timestamp of last commit (or 0 if not a git repo)
-    local mtime=$(git -C "$dir" log -1 --format=%ct 2>/dev/null || echo "0")
-    echo "$mtime"
+    # Use stat to get directory modification time (much faster than git log)
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS
+        stat -f "%m" "$dir" 2>/dev/null || echo "0"
+    else
+        # Linux
+        stat -c "%Y" "$dir" 2>/dev/null || echo "0"
+    fi
 }
 
 # Convert timestamp to "X ago" format
@@ -75,34 +94,43 @@ build_selection_list() {
     for dir in ~/work/* ~/config/* ~/personal/*; do
         [[ ! -d "$dir" ]] && continue
 
-        # Skip if this is a worktree of a bare repo (will be handled by bare repo)
-        parent_dir=$(dirname "$dir")
-        if is_bare_repo "$parent_dir"; then
-            # This directory is inside a bare repo, skip it
-            # It will be listed when we select the bare repo itself
+        # Fast check: skip numeric directories (likely worktrees)
+        local basename=$(basename "$dir")
+        if [[ "$basename" =~ ^[0-9]+$ ]]; then
             continue
         fi
 
-        # Get modification time for sorting
-        local mtime=$(get_git_mtime "$dir")
-        local ago=""
-        if [[ $mtime -gt 0 ]]; then
-            ago=" ($(time_ago $mtime))"
-        fi
+        # Get modification time for sorting (do this once)
+        local mtime=$(get_dir_mtime "$dir")
 
-        # Check if it's a bare repo
-        if is_bare_repo "$dir"; then
+        # Skip time_ago calculation - it's expensive and not critical
+        # We can add it back later if needed, but speed is priority
+
+        # Check if it's a bare repo (fast with .bare marker)
+        if [[ -f "$dir/.bare" ]] || [[ "$dir" == *.git ]]; then
             # Bare repo - show just the repo name (no branches)
             local repo_name=$(basename "$dir" | sed 's/\.git$//')
-            selections+=("$mtime|BARE|$dir|$repo_name$ago")
-        elif is_git_repo "$dir"; then
-            # Regular git repository - show with branch
-            branch=$(get_branch "$dir")
+            selections+=("$mtime|BARE|$dir|$repo_name")
+        # Check if .git exists (fast filesystem check)
+        elif [[ -d "$dir/.git" ]] || [[ -f "$dir/.git" ]]; then
+            # Git repository - get branch without spawning git process if possible
+            local branch=""
+            if [[ -f "$dir/.git/HEAD" ]]; then
+                # Try to read branch from HEAD file directly (much faster)
+                branch=$(grep "ref: refs/heads/" "$dir/.git/HEAD" 2>/dev/null | sed 's|ref: refs/heads/||')
+            elif [[ -f "$dir/.git" ]]; then
+                # Worktree - read gitdir and get branch from there
+                local gitdir=$(grep "gitdir:" "$dir/.git" 2>/dev/null | sed 's/gitdir: //')
+                if [[ -n "$gitdir" && -f "$gitdir/HEAD" ]]; then
+                    branch=$(grep "ref: refs/heads/" "$gitdir/HEAD" 2>/dev/null | sed 's|ref: refs/heads/||')
+                fi
+            fi
+
             local display_name=$(basename "$dir")
             if [[ -n "$branch" ]]; then
-                selections+=("$mtime|GIT|$dir|$display_name -> $branch$ago")
+                selections+=("$mtime|GIT|$dir|$display_name -> $branch")
             else
-                selections+=("$mtime|GIT|$dir|$display_name$ago")
+                selections+=("$mtime|GIT|$dir|$display_name")
             fi
         else
             # Regular directory (non-git)
@@ -111,7 +139,7 @@ build_selection_list() {
         fi
     done
 
-    # Sort by modification time (most recent last/at bottom)
+    # Sort by modification time (most recent first)
     printf '%s\n' "${selections[@]}" | sort -t'|' -k1 -rn | cut -d'|' -f2-
 }
 
@@ -124,7 +152,7 @@ build_worktree_list() {
         [[ -z "$worktree_path" ]] && continue
         branch=$(get_branch "$worktree_path")
         local display=$(basename "$worktree_path")
-        local mtime=$(get_git_mtime "$worktree_path")
+        local mtime=$(get_dir_mtime "$worktree_path")
         local ago=""
         if [[ $mtime -gt 0 ]]; then
             ago=" ($(time_ago $mtime))"
@@ -145,8 +173,8 @@ build_worktree_list() {
 if [[ $# -eq 1 ]]; then
     selected_path=$1
 else
-    # Show FZF with formatted list
-    selected=$(build_selection_list | fzf --delimiter='|' --with-nth=3)
+    # Show FZF with formatted list (most recent at top, no sorting by fzf for speed)
+    selected=$(build_selection_list | fzf --no-sort --delimiter='|' --with-nth=3 --tiebreak=index)
 
     if [[ -z $selected ]]; then
         exit 0
@@ -209,7 +237,15 @@ if ! tmux has-session -t="$selected_name" 2>/dev/null; then
     tmux new-session -ds "$selected_name" -c "$selected_path"
 
     # Window 1: Split for Claude in right pane (70/30)
-    tmux split-window -t "$selected_name:1" -h -p 30 -c "$selected_path" "claude --continue || claude"
+    # If this is a worktree, run claude from bare repo with --add-dir
+    parent_dir_for_claude=$(dirname "$selected_path")
+    if is_bare_repo "$parent_dir_for_claude"; then
+        # Run from bare repo root with --add-dir pointing to worktree
+        tmux split-window -t "$selected_name:1" -h -p 30 -c "$parent_dir_for_claude" "claude --add-dir $selected_path --continue || claude --add-dir $selected_path"
+    else
+        # Regular repo, run claude normally
+        tmux split-window -t "$selected_name:1" -h -p 30 -c "$selected_path" "claude --continue || claude"
+    fi
 
     # Create window 2 with nvim
     tmux new-window -t "$selected_name:2" -c "$selected_path"

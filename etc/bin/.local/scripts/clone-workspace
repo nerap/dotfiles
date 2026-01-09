@@ -59,6 +59,9 @@ mkdir -p "$TARGET_DIR"
 echo "📦 Cloning as bare repository..."
 git clone --bare "$REPO_URL" "$BARE_REPO"
 
+# Create .bare marker file for fast detection
+touch "$BARE_REPO/.bare"
+
 # Get default branch name
 cd "$BARE_REPO"
 
@@ -83,6 +86,11 @@ echo ""
 # Get commit SHA for the default branch
 COMMIT_SHA=$(git rev-parse "$DEFAULT_BRANCH")
 
+# Create shared Claude Code configuration directory in bare repo
+echo "🤖 Setting up shared Claude Code configuration..."
+mkdir -p "$BARE_REPO/.claude"
+echo ""
+
 # Create 4 workspaces as detached HEAD
 # This allows each workspace to independently checkout any branch
 echo "📁 Creating 4 workspaces..."
@@ -92,6 +100,23 @@ for i in 1 2 3 4; do
 
   # Create worktree in detached HEAD state pointing to main/master
   git worktree add --detach "$WORKSPACE_PATH" "$COMMIT_SHA"
+
+  # Add .claude to gitignore in this worktree
+  # In worktrees, .git is a file pointing to the actual git dir
+  # We need to find the real git directory for this worktree
+  WORKTREE_GIT_DIR=$(git -C "$WORKSPACE_PATH" rev-parse --git-dir)
+  mkdir -p "$WORKTREE_GIT_DIR/info"
+  echo ".claude" >> "$WORKTREE_GIT_DIR/info/exclude"
+done
+
+echo ""
+echo "🔗 Symlinking Claude Code configuration to all workspaces..."
+# Create symlinks so all worktrees share the same .claude config
+cd "$BARE_REPO"
+for i in 1 2 3 4; do
+  WORKSPACE_PATH="$BARE_REPO/$i"
+  ln -sf "$BARE_REPO/.claude" "$WORKSPACE_PATH/.claude"
+  echo "  [$i/4] Linked .claude to workspace $i"
 done
 
 echo ""
@@ -110,7 +135,8 @@ for i in 1 2 3 4; do
   tmux new-session -ds "$SESSION_NAME" -c "$WORKSPACE_PATH"
 
   # Window 1: Split terminal (70%) + Claude Code (30%)
-  tmux split-window -t "$SESSION_NAME:1" -h -p 30 -c "$WORKSPACE_PATH" 'claude --continue || claude'
+  # Run claude from bare repo root with --add-dir to access this worktree
+  tmux split-window -t "$SESSION_NAME:1" -h -p 30 -c "$BARE_REPO" "claude --add-dir $WORKSPACE_PATH --continue || claude --add-dir $WORKSPACE_PATH"
 
   # Window 2: Nvim
   tmux new-window -t "$SESSION_NAME:2" -c "$WORKSPACE_PATH"
@@ -144,6 +170,12 @@ echo "  Each workspace is in detached HEAD state (at $DEFAULT_BRANCH)"
 echo "  Switch to any branch independently in each workspace:"
 echo "    git checkout main"
 echo "    git checkout -b feature-x"
+echo ""
+echo "🤖 Claude Code Configuration:"
+echo "  All workspaces share the same Claude Code config via symlinks"
+echo "  Config location: $BARE_REPO/.claude"
+echo "  MCP servers, settings, and session history are unified across all workspaces"
+echo "  Claude runs from bare repo root with --add-dir <workspace>"
 echo ""
 echo "🎯 Attaching to workspace 1..."
 sleep 1
