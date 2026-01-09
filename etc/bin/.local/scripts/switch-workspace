@@ -45,6 +45,89 @@ find_bare_repo() {
   return 1
 }
 
+# Create a worktree for a bare repository
+# Args: $1 = bare_repo_path, $2 = worktree_number (1-4)
+# Returns: 0 on success, 1 on failure
+create_worktree_if_needed() {
+  local bare_repo="$1"
+  local worktree_num="$2"
+  local worktree_path="$bare_repo/$worktree_num"
+
+  # Check if worktree already exists
+  if [ -d "$worktree_path" ]; then
+    return 0
+  fi
+
+  # Prune stale worktree metadata first
+  git -C "$bare_repo" worktree prune 2>/dev/null
+
+  # Determine default branch
+  local default_branch=""
+  if git -C "$bare_repo" show-ref --verify --quiet refs/heads/main; then
+    default_branch="main"
+  elif git -C "$bare_repo" show-ref --verify --quiet refs/heads/master; then
+    default_branch="master"
+  else
+    # Use whatever HEAD points to
+    default_branch=$(git -C "$bare_repo" symbolic-ref --short HEAD 2>/dev/null || echo "main")
+  fi
+
+  # Check if repo has any commits
+  if ! git -C "$bare_repo" rev-parse --verify HEAD &>/dev/null; then
+    echo "Error: Repository has no commits"
+    return 1
+  fi
+
+  # Create the worktree
+  echo "Creating worktree $worktree_num at: $worktree_path (branch: $default_branch)"
+  if ! git -C "$bare_repo" worktree add "$worktree_path" "$default_branch" 2>/dev/null; then
+    echo "Error: Failed to create worktree $worktree_num"
+    return 1
+  fi
+
+  # Create .claude symlink if bare repo has .claude config
+  if [ -d "$bare_repo/.claude" ]; then
+    ln -sf ../.claude "$worktree_path/.claude"
+    echo "Created .claude symlink for shared configuration"
+  fi
+
+  echo "✓ Worktree $worktree_num created successfully"
+  return 0
+}
+
+# Create tmux session for a worktree
+# Args: $1 = session_name, $2 = worktree_path
+# Returns: 0 on success, 1 on failure
+create_tmux_session_for_worktree() {
+  local session_name="$1"
+  local worktree_path="$2"
+
+  # Check if session already exists
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    return 0
+  fi
+
+  echo "Creating tmux session: $session_name"
+
+  # Create new session with first window (terminal only)
+  tmux new-session -ds "$session_name" -c "$worktree_path"
+
+  # Window 1: Split for Claude in right pane (60/40)
+  # Right pane is a terminal (not running claude directly)
+  # This prevents Ctrl+C from closing the pane
+  tmux split-window -t "$session_name:1" -h -p 40 -c "$worktree_path"
+
+  # Create window 2 with nvim
+  tmux new-window -t "$session_name:2" -c "$worktree_path"
+  tmux send-keys -t "$session_name:2" 'nvim .' C-m
+
+  # Focus on window 1 (terminal + claude pane)
+  tmux select-window -t "$session_name:1"
+
+  echo "✓ Session $session_name created"
+  return 0
+}
+
 BARE_REPO=$(find_bare_repo "$CURRENT_PATH")
 
 if [ -z "$BARE_REPO" ]; then
@@ -56,11 +139,23 @@ fi
 REPO_NAME=$(basename "$BARE_REPO" .git)
 SAFE_REPO_NAME=$(echo "$REPO_NAME" | tr . _)
 TARGET_SESSION="${SAFE_REPO_NAME}_${WORKSPACE_NUM}"
+TARGET_WORKTREE="$BARE_REPO/$WORKSPACE_NUM"
 
-# Check if target session exists
+# Create worktree if it doesn't exist
+if [ ! -d "$TARGET_WORKTREE" ]; then
+  echo "Worktree $WORKSPACE_NUM does not exist, creating it..."
+  if ! create_worktree_if_needed "$BARE_REPO" "$WORKSPACE_NUM"; then
+    tmux display-message "⚠ Failed to create worktree $WORKSPACE_NUM"
+    exit 1
+  fi
+fi
+
+# Create tmux session if it doesn't exist
 if ! tmux has-session -t "$TARGET_SESSION" 2>/dev/null; then
-  tmux display-message "⚠ Session $TARGET_SESSION not found"
-  exit 1
+  if ! create_tmux_session_for_worktree "$TARGET_SESSION" "$TARGET_WORKTREE"; then
+    tmux display-message "⚠ Failed to create session $TARGET_SESSION"
+    exit 1
+  fi
 fi
 
 # Switch to the target workspace session
