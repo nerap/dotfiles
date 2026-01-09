@@ -66,5 +66,6 @@ fi
 # Switch to the target workspace session
 tmux switch-client -t "$TARGET_SESSION"
 
-# Show notification
-tmux display-message "→ Workspace $WORKSPACE_NUM ($TARGET_SESSION)"
+# Noise I don't like
+# # Show notification
+# tmux display-message "→ Workspace $WORKSPACE_NUM ($TARGET_SESSION)"

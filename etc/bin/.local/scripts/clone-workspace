@@ -7,12 +7,14 @@ set -e
 # Parse arguments
 CATEGORY=""
 REPO_URL=""
+IS_INIT_REPO=false
 
-while getopts "pwt" opt; do
+while getopts "pwti" opt; do
   case $opt in
     p) CATEGORY="personal" ;;
     w) CATEGORY="work" ;;
     t) CATEGORY="tools" ;;
+    i) IS_INIT_REPO=true ;;
     \?) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
   esac
 done
@@ -22,17 +24,18 @@ REPO_URL="$1"
 
 # Validate arguments
 if [ -z "$CATEGORY" ] || [ -z "$REPO_URL" ]; then
-  echo "Usage: clone-workspace -p|-w|-t <repo-url>"
+  echo "Usage: clone-workspace -p|-w|-t [-i] <repo-url>"
   echo ""
   echo "Flags:"
   echo "  -p    Clone to ~/personal"
   echo "  -w    Clone to ~/work"
   echo "  -t    Clone to ~/tools"
+  echo "  -i    Initialize new/empty repo (creates main and dev branches)"
   echo ""
   echo "Examples:"
   echo "  clone-workspace -p git@github.com:user/myapp.git"
   echo "  clone-workspace -w git@github.com:company/project.git"
-  echo "  clone-workspace -t git@github.com:author/tool.git"
+  echo "  clone-workspace -p -i git@github.com:user/brand-new-repo.git"
   exit 1
 fi
 
@@ -65,26 +68,63 @@ touch "$BARE_REPO/.bare"
 # Get default branch name
 cd "$BARE_REPO"
 
-# For bare repos, branches are in refs/heads/ not refs/remotes/
-if git show-ref --verify --quiet refs/heads/main; then
+if [ "$IS_INIT_REPO" = true ]; then
+  # New/empty repo - initialize with main and dev branches
+  echo "🆕 Initializing new repository with main and dev branches..."
+  echo ""
+
+  # Create initial commit in a temporary worktree using --orphan
+  TEMP_INIT="$BARE_REPO/.temp-init"
+  git worktree add --orphan -b main "$TEMP_INIT"
+  cd "$TEMP_INIT"
+
+  # Create initial commit
+  echo "# $REPO_NAME" > README.md
+  git add README.md
+  git commit -m "Initial commit"
+
+  # Push main branch
+  echo "  📤 Pushing main branch to origin..."
+  git push -u origin main
+
+  # Create and push dev branch from main
+  git checkout -b dev
+  echo "  📤 Pushing dev branch to origin..."
+  git push -u origin dev
+
+  # Clean up temp worktree
+  cd "$BARE_REPO"
+  git worktree remove "$TEMP_INIT"
+
   DEFAULT_BRANCH="main"
-elif git show-ref --verify --quiet refs/heads/master; then
-  DEFAULT_BRANCH="master"
+  COMMIT_SHA=$(git rev-parse main)
+
+  echo "✅ Repository initialized with main and dev branches"
+  echo ""
 else
-  # Get the first available branch
-  DEFAULT_BRANCH=$(git branch | head -1 | sed 's/^[* ]*//' | xargs)
+  # Existing repo flow
+  # For bare repos, branches are in refs/heads/ not refs/remotes/
+  if git show-ref --verify --quiet refs/heads/main; then
+    DEFAULT_BRANCH="main"
+  elif git show-ref --verify --quiet refs/heads/master; then
+    DEFAULT_BRANCH="master"
+  else
+    # Get the first available branch
+    DEFAULT_BRANCH=$(git branch | head -1 | sed 's/^[* ]*//' | xargs)
+  fi
+
+  if [ -z "$DEFAULT_BRANCH" ]; then
+    echo "❌ Error: No branches found in repository"
+    echo "💡 Tip: Use the -i flag for new/empty repositories"
+    exit 1
+  fi
+
+  echo "📍 Default branch: $DEFAULT_BRANCH"
+  echo ""
+
+  # Get commit SHA for the default branch
+  COMMIT_SHA=$(git rev-parse "$DEFAULT_BRANCH")
 fi
-
-if [ -z "$DEFAULT_BRANCH" ]; then
-  echo "❌ Error: No branches found in repository"
-  exit 1
-fi
-
-echo "📍 Default branch: $DEFAULT_BRANCH"
-echo ""
-
-# Get commit SHA for the default branch
-COMMIT_SHA=$(git rev-parse "$DEFAULT_BRANCH")
 
 # Create shared Claude Code configuration directory in bare repo
 echo "🤖 Setting up shared Claude Code configuration..."
@@ -96,10 +136,23 @@ echo ""
 echo "📁 Creating 4 workspaces..."
 for i in 1 2 3 4; do
   WORKSPACE_PATH="$BARE_REPO/$i"
-  echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $DEFAULT_BRANCH)"
 
-  # Create worktree in detached HEAD state pointing to main/master
-  git worktree add --detach "$WORKSPACE_PATH" "$COMMIT_SHA"
+  # For init repos with -i flag: workspaces 1-2 from main, 3-4 from dev
+  if [ "$IS_INIT_REPO" = true ]; then
+    if [ $i -le 2 ]; then
+      BRANCH_SHA=$(git rev-parse main)
+      BRANCH_NAME="main"
+    else
+      BRANCH_SHA=$(git rev-parse dev)
+      BRANCH_NAME="dev"
+    fi
+    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $BRANCH_NAME)"
+    git worktree add --detach "$WORKSPACE_PATH" "$BRANCH_SHA"
+  else
+    # Standard flow: all workspaces from default branch
+    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $DEFAULT_BRANCH)"
+    git worktree add --detach "$WORKSPACE_PATH" "$COMMIT_SHA"
+  fi
 
   # Add .claude to gitignore in this worktree
   # In worktrees, .git is a file pointing to the actual git dir
@@ -161,15 +214,22 @@ echo "  Ctrl+k → Workspace 3 (${SAFE_REPO_NAME}_3)"
 echo "  Ctrl+l → Workspace 4 (${SAFE_REPO_NAME}_4)"
 echo ""
 echo "📂 Workspace Locations:"
-for i in 1 2 3 4; do
-  echo "  Workspace $i: $BARE_REPO/$i"
-done
+if [ "$IS_INIT_REPO" = true ]; then
+  echo "  Workspace 1: $BARE_REPO/1 (from main)"
+  echo "  Workspace 2: $BARE_REPO/2 (from main)"
+  echo "  Workspace 3: $BARE_REPO/3 (from dev)"
+  echo "  Workspace 4: $BARE_REPO/4 (from dev)"
+else
+  for i in 1 2 3 4; do
+    echo "  Workspace $i: $BARE_REPO/$i (from $DEFAULT_BRANCH)"
+  done
+fi
 echo ""
 echo "💡 Usage:"
-echo "  Each workspace is in detached HEAD state (at $DEFAULT_BRANCH)"
-echo "  Switch to any branch independently in each workspace:"
-echo "    git checkout main"
-echo "    git checkout -b feature-x"
+echo "  Each workspace is in detached HEAD state"
+echo "  Create feature branches from main/dev independently in each workspace:"
+echo "    git checkout -b feature-x origin/main"
+echo "    git checkout -b feature-y origin/dev"
 echo ""
 echo "🤖 Claude Code Configuration:"
 echo "  All workspaces share the same Claude Code config via symlinks"
