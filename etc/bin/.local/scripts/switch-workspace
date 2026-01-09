@@ -18,6 +18,12 @@ fi
 # Get current pane's directory
 CURRENT_PATH=$(tmux display-message -p '#{pane_current_path}')
 
+# Check if we're in a non-bare repo (has .git directory)
+if [ -d "$CURRENT_PATH/.git" ] || git -C "$CURRENT_PATH" rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+  # In a non-bare repo, silently exit
+  exit 0
+fi
+
 # Find the bare repo by looking for .git directory going up
 find_bare_repo() {
   local dir="$1"
@@ -42,8 +48,8 @@ find_bare_repo() {
 BARE_REPO=$(find_bare_repo "$CURRENT_PATH")
 
 if [ -z "$BARE_REPO" ]; then
-  tmux display-message "⚠ Not in a workspace repository"
-  exit 1
+  # Not in a workspace repository, silently exit
+  exit 0
 fi
 
 # Get repo name from bare repo path and sanitize (replace dots with underscores)
