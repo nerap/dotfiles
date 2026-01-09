@@ -156,7 +156,7 @@ git clone git@github.com:nerap/alacritty.git ~/personal/alacritty
 git clone git@github.com:nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
 
 # Giving execution rights to scripts
-chmod +x ~/personal/dotfiles/etc/.local/scripts/*
+chmod +x ~/personal/dotfiles/etc/bin/.local/scripts/*
 
 # Create nvim dir if not exists
 mkdir -p ~/.config/nvim

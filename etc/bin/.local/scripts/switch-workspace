@@ -1,0 +1,64 @@
+#!/bin/bash
+# Switch to a specific workspace (1-4) within current repo
+# Usage: switch-workspace <1|2|3|4>
+
+WORKSPACE_NUM="$1"
+
+if [ -z "$WORKSPACE_NUM" ] || ! [[ "$WORKSPACE_NUM" =~ ^[1-4]$ ]]; then
+  echo "Usage: switch-workspace <1|2|3|4>"
+  exit 1
+fi
+
+# Check if we're in tmux
+if [ -z "$TMUX" ]; then
+  echo "Error: Must be run inside tmux"
+  exit 1
+fi
+
+# Get current pane's directory
+CURRENT_PATH=$(tmux display-message -p '#{pane_current_path}')
+
+# Find the bare repo by looking for .git directory going up
+find_bare_repo() {
+  local dir="$1"
+  while [ "$dir" != "/" ]; do
+    # Check if this directory is a workspace (has parent that's .git)
+    local parent=$(dirname "$dir")
+    if [ -f "$parent/config" ] && [ -d "$parent/refs" ]; then
+      # Parent is a bare repo
+      echo "$parent"
+      return 0
+    fi
+    # Check if we're already in a .git directory
+    if [ -f "$dir/config" ] && [ -d "$dir/refs" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir="$parent"
+  done
+  return 1
+}
+
+BARE_REPO=$(find_bare_repo "$CURRENT_PATH")
+
+if [ -z "$BARE_REPO" ]; then
+  tmux display-message "⚠ Not in a workspace repository"
+  exit 1
+fi
+
+# Get repo name from bare repo path and sanitize (replace dots with underscores)
+REPO_NAME=$(basename "$BARE_REPO" .git)
+SAFE_REPO_NAME=$(echo "$REPO_NAME" | tr . _)
+TARGET_SESSION="${SAFE_REPO_NAME}_${WORKSPACE_NUM}"
+
+# Check if target session exists
+if ! tmux has-session -t "$TARGET_SESSION" 2>/dev/null; then
+  tmux display-message "⚠ Session $TARGET_SESSION not found"
+  exit 1
+fi
+
+# Switch to the target workspace session
+tmux switch-client -t "$TARGET_SESSION"
+
+# Show notification
+tmux display-message "→ Workspace $WORKSPACE_NUM ($TARGET_SESSION)"

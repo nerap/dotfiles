@@ -156,17 +156,18 @@ else
     type=$(echo "$selected" | cut -d'|' -f1)
     path=$(echo "$selected" | cut -d'|' -f2)
 
-    # If it's a bare repo, auto-select most recent worktree
+    # If it's a bare repo, auto-select workspace 1
     if [[ "$type" == "BARE" ]]; then
-        # Get most recent worktree (first line from sorted list)
-        worktree_selected=$(build_worktree_list "$path" | head -1)
+        # Always select workspace 1 (first workspace)
+        workspace_1="$path/1"
 
-        if [[ -z $worktree_selected ]]; then
-            echo "No worktrees found for bare repo: $path"
+        if [[ ! -d "$workspace_1" ]]; then
+            echo "No workspace 1 found for bare repo: $path"
+            echo "Expected: $workspace_1"
             exit 1
         fi
 
-        selected_path=$(echo "$worktree_selected" | cut -d'|' -f1)
+        selected_path="$workspace_1"
     else
         selected_path=$path
     fi

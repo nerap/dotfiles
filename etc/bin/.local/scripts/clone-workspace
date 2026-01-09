@@ -1,0 +1,152 @@
+#!/bin/bash
+# Clone a repository as bare and create 4 fixed workspaces with tmux sessions
+# Usage: clone-workspace -p|-w|-t <repo-url>
+
+set -e
+
+# Parse arguments
+CATEGORY=""
+REPO_URL=""
+
+while getopts "pwt" opt; do
+  case $opt in
+    p) CATEGORY="personal" ;;
+    w) CATEGORY="work" ;;
+    t) CATEGORY="tools" ;;
+    \?) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+  esac
+done
+
+shift $((OPTIND-1))
+REPO_URL="$1"
+
+# Validate arguments
+if [ -z "$CATEGORY" ] || [ -z "$REPO_URL" ]; then
+  echo "Usage: clone-workspace -p|-w|-t <repo-url>"
+  echo ""
+  echo "Flags:"
+  echo "  -p    Clone to ~/personal"
+  echo "  -w    Clone to ~/work"
+  echo "  -t    Clone to ~/tools"
+  echo ""
+  echo "Examples:"
+  echo "  clone-workspace -p git@github.com:user/myapp.git"
+  echo "  clone-workspace -w git@github.com:company/project.git"
+  echo "  clone-workspace -t git@github.com:author/tool.git"
+  exit 1
+fi
+
+# Extract repo name from URL
+REPO_NAME=$(basename "$REPO_URL" .git)
+
+# Set target directory based on category
+TARGET_DIR="$HOME/$CATEGORY"
+BARE_REPO="$TARGET_DIR/${REPO_NAME}.git"
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 Workspace Setup"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Repository: $REPO_URL"
+echo "Category:   $CATEGORY"
+echo "Target:     $BARE_REPO"
+echo "Workspaces: 4"
+echo ""
+
+# Create target directory if it doesn't exist
+mkdir -p "$TARGET_DIR"
+
+# Clone as bare repository
+echo "📦 Cloning as bare repository..."
+git clone --bare "$REPO_URL" "$BARE_REPO"
+
+# Get default branch name
+cd "$BARE_REPO"
+
+# For bare repos, branches are in refs/heads/ not refs/remotes/
+if git show-ref --verify --quiet refs/heads/main; then
+  DEFAULT_BRANCH="main"
+elif git show-ref --verify --quiet refs/heads/master; then
+  DEFAULT_BRANCH="master"
+else
+  # Get the first available branch
+  DEFAULT_BRANCH=$(git branch | head -1 | sed 's/^[* ]*//' | xargs)
+fi
+
+if [ -z "$DEFAULT_BRANCH" ]; then
+  echo "❌ Error: No branches found in repository"
+  exit 1
+fi
+
+echo "📍 Default branch: $DEFAULT_BRANCH"
+echo ""
+
+# Get commit SHA for the default branch
+COMMIT_SHA=$(git rev-parse "$DEFAULT_BRANCH")
+
+# Create 4 workspaces as detached HEAD
+# This allows each workspace to independently checkout any branch
+echo "📁 Creating 4 workspaces..."
+for i in 1 2 3 4; do
+  WORKSPACE_PATH="$BARE_REPO/$i"
+  echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $DEFAULT_BRANCH)"
+
+  # Create worktree in detached HEAD state pointing to main/master
+  git worktree add --detach "$WORKSPACE_PATH" "$COMMIT_SHA"
+done
+
+echo ""
+echo "🖥️  Creating tmux sessions..."
+
+# Create 4 tmux sessions with consistent layout
+for i in 1 2 3 4; do
+  WORKSPACE_PATH="$BARE_REPO/$i"
+  # Sanitize repo name for tmux (replace dots with underscores)
+  SAFE_REPO_NAME=$(echo "$REPO_NAME" | tr . _)
+  SESSION_NAME="${SAFE_REPO_NAME}_${i}"
+
+  echo "  [$i/4] Creating session: $SESSION_NAME"
+
+  # Create detached session with window 1
+  tmux new-session -ds "$SESSION_NAME" -c "$WORKSPACE_PATH"
+
+  # Window 1: Split terminal (70%) + Claude Code (30%)
+  tmux split-window -t "$SESSION_NAME:1" -h -p 30 -c "$WORKSPACE_PATH" 'claude --continue || claude'
+
+  # Window 2: Nvim
+  tmux new-window -t "$SESSION_NAME:2" -c "$WORKSPACE_PATH"
+  tmux send-keys -t "$SESSION_NAME:2" 'nvim .' C-m
+
+  # Focus on window 1
+  tmux select-window -t "$SESSION_NAME:1"
+done
+
+echo ""
+echo "✅ Setup complete!"
+echo ""
+# Sanitize repo name for display
+SAFE_REPO_NAME=$(echo "$REPO_NAME" | tr . _)
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 Workspace Navigation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Ctrl+h → Workspace 1 (${SAFE_REPO_NAME}_1)"
+echo "  Ctrl+j → Workspace 2 (${SAFE_REPO_NAME}_2)"
+echo "  Ctrl+k → Workspace 3 (${SAFE_REPO_NAME}_3)"
+echo "  Ctrl+l → Workspace 4 (${SAFE_REPO_NAME}_4)"
+echo ""
+echo "📂 Workspace Locations:"
+for i in 1 2 3 4; do
+  echo "  Workspace $i: $BARE_REPO/$i"
+done
+echo ""
+echo "💡 Usage:"
+echo "  Each workspace is in detached HEAD state (at $DEFAULT_BRANCH)"
+echo "  Switch to any branch independently in each workspace:"
+echo "    git checkout main"
+echo "    git checkout -b feature-x"
+echo ""
+echo "🎯 Attaching to workspace 1..."
+sleep 1
+
+# Attach to first workspace
+tmux attach-session -t "${SAFE_REPO_NAME}_1"
