@@ -253,15 +253,8 @@ if ! tmux has-session -t="$selected_name" 2>/dev/null; then
     tmux new-session -ds "$selected_name" -c "$selected_path"
 
     # Window 1: Split for Claude in right pane (70/30)
-    # If this is a worktree, run claude from bare repo with --add-dir
-    parent_dir_for_claude=$(dirname "$selected_path")
-    if is_bare_repo "$parent_dir_for_claude"; then
-        # Run from bare repo root with --add-dir pointing to worktree
-        tmux split-window -t "$selected_name:1" -h -p 30 -c "$parent_dir_for_claude" "claude --add-dir $selected_path --continue || claude --add-dir $selected_path"
-    else
-        # Regular repo, run claude normally
-        tmux split-window -t "$selected_name:1" -h -p 30 -c "$selected_path" "claude --continue || claude"
-    fi
+    # Run claude from selected directory (worktrees use .claude symlink for shared config)
+    tmux split-window -t "$selected_name:1" -h -p 30 -c "$selected_path" "claude"
 
     # Create window 2 with nvim
     tmux new-window -t "$selected_name:2" -c "$selected_path"

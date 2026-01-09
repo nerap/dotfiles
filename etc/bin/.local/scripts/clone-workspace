@@ -188,8 +188,8 @@ for i in 1 2 3 4; do
   tmux new-session -ds "$SESSION_NAME" -c "$WORKSPACE_PATH"
 
   # Window 1: Split terminal (70%) + Claude Code (30%)
-  # Run claude from bare repo root with --add-dir to access this worktree
-  tmux split-window -t "$SESSION_NAME:1" -h -p 30 -c "$BARE_REPO" "claude --add-dir $WORKSPACE_PATH --continue || claude --add-dir $WORKSPACE_PATH"
+  # Run claude from worktree directory (uses .claude symlink for shared config)
+  tmux split-window -t "$SESSION_NAME:1" -h -p 30 -c "$WORKSPACE_PATH" "claude"
 
   # Window 2: Nvim
   tmux new-window -t "$SESSION_NAME:2" -c "$WORKSPACE_PATH"
