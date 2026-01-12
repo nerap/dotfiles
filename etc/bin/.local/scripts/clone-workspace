@@ -87,10 +87,15 @@ if [ "$IS_INIT_REPO" = true ]; then
   echo "  📤 Pushing main branch to origin..."
   git push -u origin main
 
-  # Create and push dev branch from main
-  git checkout -b dev
-  echo "  📤 Pushing dev branch to origin..."
-  git push -u origin dev
+  # Create and push release branches from main
+  git checkout -b release/staging
+  echo "  📤 Pushing release/staging branch to origin..."
+  git push -u origin release/staging
+
+  git checkout main
+  git checkout -b release/production
+  echo "  📤 Pushing release/production branch to origin..."
+  git push -u origin release/production
 
   # Clean up temp worktree
   cd "$BARE_REPO"
@@ -137,20 +142,16 @@ echo "📁 Creating 4 workspaces..."
 for i in 1 2 3 4; do
   WORKSPACE_PATH="$BARE_REPO/$i"
 
-  # For init repos with -i flag: workspaces 1-2 from main, 3-4 from dev
+  # For init repos with -i flag: all workspaces start from main (detached HEAD)
+  # Workspace 1: stays on main (planning/exploration only)
+  # Workspaces 2-4: checkout feature/* branches as needed
   if [ "$IS_INIT_REPO" = true ]; then
-    if [ $i -le 2 ]; then
-      BRANCH_SHA=$(git rev-parse main)
-      BRANCH_NAME="main"
-    else
-      BRANCH_SHA=$(git rev-parse dev)
-      BRANCH_NAME="dev"
-    fi
-    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $BRANCH_NAME)"
+    BRANCH_SHA=$(git rev-parse main)
+    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at main, detached HEAD)"
     git worktree add --detach "$WORKSPACE_PATH" "$BRANCH_SHA"
   else
-    # Standard flow: all workspaces from default branch
-    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $DEFAULT_BRANCH)"
+    # Standard flow: all workspaces from default branch (detached HEAD)
+    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $DEFAULT_BRANCH, detached HEAD)"
     git worktree add --detach "$WORKSPACE_PATH" "$COMMIT_SHA"
   fi
 
@@ -173,6 +174,207 @@ for i in 1 2 3 4; do
 done
 
 echo ""
+echo "🛡️  Setting up workspace 1 protections..."
+# Create pre-commit hook in workspace 1 to prevent commits to protected branches
+WORKSPACE_1_GIT_DIR=$(git -C "$BARE_REPO/1" rev-parse --git-dir)
+mkdir -p "$WORKSPACE_1_GIT_DIR/hooks"
+cat > "$WORKSPACE_1_GIT_DIR/hooks/pre-commit" << 'HOOK_EOF'
+#!/bin/bash
+# Prevent commits to protected branches in workspace 1 (planning workspace)
+
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+# Block commits to main and release/* branches
+if [[ "$BRANCH" == "main" ]] || [[ "$BRANCH" == release/* ]]; then
+  echo "❌ ERROR: Cannot commit to '$BRANCH' in workspace 1"
+  echo ""
+  echo "🛡️  Workspace 1 is for planning/exploration only"
+  echo "Protected branches: main, release/*"
+  echo ""
+  echo "💡 Use workspaces 2-4 for feature development:"
+  echo "   cd ../2 && git checkout -b feature/your-feature main"
+  exit 1
+fi
+
+# Allow commits on other branches (e.g., feature/*)
+exit 0
+HOOK_EOF
+chmod +x "$WORKSPACE_1_GIT_DIR/hooks/pre-commit"
+echo "  ✓ Workspace 1 protected (cannot commit to main or release/*)"
+
+# For init repos, create local worktree documentation
+if [ "$IS_INIT_REPO" = true ]; then
+  echo ""
+  echo "📝 Creating worktree setup documentation..."
+  mkdir -p "$BARE_REPO/.worktree"
+  cat > "$BARE_REPO/.worktree/SETUP.md" << 'DOC_EOF'
+# Worktree Development Setup
+
+This repository uses **git worktrees** for parallel development across 4 workspaces.
+
+## Directory Structure
+
+```
+project.git/
+├── .bare                   # Marker for bare repository
+├── .claude/                # Shared Claude Code configuration
+├── .worktree/              # This documentation (local-only)
+├── 1/                      # Workspace 1 - Planning/Exploration (main branch)
+├── 2/                      # Workspace 2 - Feature Development
+├── 3/                      # Workspace 3 - Feature Development
+└── 4/                      # Workspace 4 - Feature Development
+```
+
+## Workspace Assignments
+
+### Workspace 1: Planning & Exploration (main)
+- **Purpose**: Strategic planning, architecture, code exploration
+- **Branch**: Stays on `main` (read-only, protected by git hook)
+- **Activities**:
+  - Use Claude for codebase exploration
+  - Create implementation plans
+  - Review code and PRs
+  - Document architectural decisions
+- **Protection**: Cannot commit to `main` or `release/*` branches
+- **Rule**: Never create feature branches here
+
+### Workspaces 2-4: Feature Development (feature/*)
+- **Purpose**: Implement features independently in parallel
+- **Workflow**:
+  ```bash
+  # Workspace 2: Feature A
+  cd 2/
+  git checkout -b feature/user-authentication main
+  # Develop, commit, push
+
+  # Workspace 3: Feature B (parallel)
+  cd ../3/
+  git checkout -b feature/payment-system main
+  # Develop independently
+
+  # Workspace 4: Feature C (parallel)
+  cd ../4/
+  git checkout -b feature/notifications main
+  # Work on another feature
+  ```
+
+## Branching Strategy (Trunk-Based Development)
+
+```
+main (trunk - always deployable)
+├── feature/*              # Short-lived feature branches
+├── release/staging        # Pre-production testing
+└── release/production     # Production release branch
+```
+
+### Branch Usage:
+- **`main`**: Trunk branch where all features merge (always deployable)
+- **`feature/*`**: Short-lived feature branches (delete after merge to main)
+- **`release/staging`**: Deploy to staging for QA testing
+- **`release/production`**: Deploy to production (tag releases: v1.0.0)
+
+### Workflow:
+1. Create feature branch from `main` in workspace 2/3/4
+2. Develop and commit changes
+3. Push and create PR to `main`
+4. After PR merge, cherry-pick/merge to `release/staging` for QA
+5. After QA approval, merge to `release/production`
+6. Tag production releases: `git tag v1.0.0 release/production`
+7. Delete feature branch
+
+## Tmux Navigation
+
+Switch between workspaces using tmux keybindings:
+- **Ctrl+h** → Workspace 1 (planning)
+- **Ctrl+j** → Workspace 2 (feature dev)
+- **Ctrl+k** → Workspace 3 (feature dev)
+- **Ctrl+l** → Workspace 4 (feature dev)
+
+Or use the command:
+```bash
+switch-workspace 2  # Switch to workspace 2
+```
+
+## Claude Code Integration
+
+All workspaces share the same Claude Code configuration via symlinks:
+- **Config location**: `<repo>/.claude/`
+- **Shared**: Settings, MCP servers, conversation history
+- **Usage**: Start Claude manually in the right pane (50/50 split)
+
+## Common Operations
+
+### Create New Feature
+```bash
+cd 2/  # Or 3/ or 4/
+git checkout -b feature/my-feature main
+# Work on feature
+git add .
+git commit -m "Implement feature"
+git push -u origin feature/my-feature
+```
+
+### Sync with Latest Main
+```bash
+cd 1/
+git pull origin main  # Update workspace 1
+
+cd 2/
+git fetch origin
+git rebase origin/main  # Rebase your feature branch
+```
+
+### Switch Feature in Workspace
+```bash
+cd 3/
+git checkout main
+git pull
+git checkout -b feature/another-feature main
+```
+
+### Clean Up Merged Feature
+```bash
+# After feature merged to main
+cd 2/
+git checkout main
+git pull
+git branch -d feature/my-feature  # Delete local branch
+git push origin --delete feature/my-feature  # Delete remote
+```
+
+## Troubleshooting
+
+### "I accidentally committed in workspace 1"
+The pre-commit hook should prevent this, but if you bypassed it:
+```bash
+cd 1/
+git reset --soft HEAD~1  # Undo commit, keep changes
+```
+
+### "I want to add a 5th workspace"
+```bash
+cd <repo>.git/
+git worktree add 5 main
+ln -sf .claude 5/.claude
+# Create tmux session manually or use switch-workspace 5
+```
+
+### "How do I remove a worktree?"
+```bash
+cd <repo>.git/
+git worktree remove 3
+git worktree prune
+```
+
+## Learn More
+
+- [Git Worktree Docs](https://git-scm.com/docs/git-worktree)
+- [Trunk-Based Development](https://trunkbaseddevelopment.com/)
+DOC_EOF
+  echo "  ✓ Documentation created at: $BARE_REPO/.worktree/SETUP.md"
+fi
+
+echo ""
 echo "🖥️  Creating tmux sessions..."
 
 # Create 4 tmux sessions with consistent layout
@@ -187,9 +389,10 @@ for i in 1 2 3 4; do
   # Create detached session with window 1
   tmux new-session -ds "$SESSION_NAME" -c "$WORKSPACE_PATH"
 
-  # Window 1: Split terminal (70%) + Claude Code (30%)
-  # Run claude from worktree directory (uses .claude symlink for shared config)
-  tmux split-window -t "$SESSION_NAME:1" -h -p 30 -c "$WORKSPACE_PATH" "claude"
+  # Window 1: Split terminal (50%) + Claude pane (50%)
+  # Right pane is a terminal (not running claude directly)
+  # This prevents Ctrl+C from closing the pane
+  tmux split-window -t "$SESSION_NAME:1" -h -p 50 -c "$WORKSPACE_PATH"
 
   # Window 2: Nvim
   tmux new-window -t "$SESSION_NAME:2" -c "$WORKSPACE_PATH"
@@ -215,27 +418,43 @@ echo "  Ctrl+l → Workspace 4 (${SAFE_REPO_NAME}_4)"
 echo ""
 echo "📂 Workspace Locations:"
 if [ "$IS_INIT_REPO" = true ]; then
-  echo "  Workspace 1: $BARE_REPO/1 (from main)"
-  echo "  Workspace 2: $BARE_REPO/2 (from main)"
-  echo "  Workspace 3: $BARE_REPO/3 (from dev)"
-  echo "  Workspace 4: $BARE_REPO/4 (from dev)"
+  echo "  Workspace 1: $BARE_REPO/1 (planning - protected main branch)"
+  echo "  Workspace 2: $BARE_REPO/2 (feature dev - from main)"
+  echo "  Workspace 3: $BARE_REPO/3 (feature dev - from main)"
+  echo "  Workspace 4: $BARE_REPO/4 (feature dev - from main)"
+  echo ""
+  echo "📋 Branching Strategy:"
+  echo "  main              → Trunk (always deployable)"
+  echo "  feature/*         → Short-lived feature branches"
+  echo "  release/staging   → Pre-production testing"
+  echo "  release/production → Production releases"
+  echo ""
+  echo "📝 Documentation: $BARE_REPO/.worktree/SETUP.md"
 else
   for i in 1 2 3 4; do
-    echo "  Workspace $i: $BARE_REPO/$i (from $DEFAULT_BRANCH)"
+    echo "  Workspace $i: $BARE_REPO/$i (from $DEFAULT_BRANCH, detached HEAD)"
   done
 fi
 echo ""
-echo "💡 Usage:"
-echo "  Each workspace is in detached HEAD state"
-echo "  Create feature branches from main/dev independently in each workspace:"
-echo "    git checkout -b feature-x origin/main"
-echo "    git checkout -b feature-y origin/dev"
+echo "💡 Recommended Workflow:"
+if [ "$IS_INIT_REPO" = true ]; then
+  echo "  Workspace 1: Planning only (protected, cannot commit to main)"
+  echo "  Workspaces 2-4: Feature development"
+  echo ""
+  echo "  Create features in workspaces 2-4:"
+  echo "    cd 2/ && git checkout -b feature/my-feature main"
+  echo "    cd 3/ && git checkout -b feature/another main"
+else
+  echo "  Each workspace is in detached HEAD state"
+  echo "  Create feature branches as needed:"
+  echo "    cd 2/ && git checkout -b feature/my-feature"
+fi
 echo ""
 echo "🤖 Claude Code Configuration:"
 echo "  All workspaces share the same Claude Code config via symlinks"
 echo "  Config location: $BARE_REPO/.claude"
 echo "  MCP servers, settings, and session history are unified across all workspaces"
-echo "  Claude runs from bare repo root with --add-dir <workspace>"
+echo "  Start Claude manually in the right pane (50/50 split)"
 echo ""
 echo "🎯 Attaching to workspace 1..."
 sleep 1

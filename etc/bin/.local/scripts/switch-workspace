@@ -112,10 +112,10 @@ create_tmux_session_for_worktree() {
   # Create new session with first window (terminal only)
   tmux new-session -ds "$session_name" -c "$worktree_path"
 
-  # Window 1: Split for Claude in right pane (60/40)
+  # Window 1: Split for Claude in right pane (50/50)
   # Right pane is a terminal (not running claude directly)
   # This prevents Ctrl+C from closing the pane
-  tmux split-window -t "$session_name:1" -h -p 40 -c "$worktree_path"
+  tmux split-window -t "$session_name:1" -h -p 50 -c "$worktree_path"
 
   # Create window 2 with nvim
   tmux new-window -t "$session_name:2" -c "$worktree_path"
