@@ -1,32 +1,5 @@
 #!/usr/bin/env bash
 
-# Create per-project lock file to prevent duplicate instances
-# Determine project name based on current working directory
-CURRENT_DIR=$(pwd)
-parent_dir=$(dirname "$CURRENT_DIR")
-
-if [[ -f "$parent_dir/.bare" ]] || git -C "$parent_dir" rev-parse --is-bare-repository &>/dev/null 2>&1; then
-    # We're in a worktree - use bare repo name for lock
-    project_name=$(basename "$parent_dir" | sed 's/\.git$//' | tr . _)
-elif [[ -f "$CURRENT_DIR/.bare" ]] || git -C "$CURRENT_DIR" rev-parse --is-bare-repository &>/dev/null 2>&1; then
-    # We're in the bare repo itself
-    project_name=$(basename "$CURRENT_DIR" | sed 's/\.git$//' | tr . _)
-else
-    # Regular directory - use current directory name for lock
-    project_name=$(basename "$CURRENT_DIR" | tr . _)
-fi
-
-# Create lock file with project-specific name
-LOCK_FILE="/tmp/tmux-sessionizer-${project_name}.lock"
-if [[ -f "$LOCK_FILE" ]]; then
-    # Another instance for this project is running, exit silently
-    exit 0
-fi
-
-# Create lock file and ensure cleanup on exit
-trap "rm -f '$LOCK_FILE'" EXIT
-touch "$LOCK_FILE"
-
 # Function to check if a directory is a bare git repository
 is_bare_repo() {
     local dir=$1
