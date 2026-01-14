@@ -1,0 +1,633 @@
+#!/usr/bin/env bash
+# dorian-init - Interactive project initialization
+# Creates .dorian.json, CLAUDE.md, and sets up .claude/ structure
+
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEMPLATE_DIR="${DORIAN_TEMPLATE_DIR:-$(dirname $(dirname $(dirname $(dirname "$SCRIPT_DIR"))))/.claude/templates}"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+info() { echo -e "${BLUE}ℹ${NC}  $1"; }
+success() { echo -e "${GREEN}✓${NC}  $1"; }
+warning() { echo -e "${YELLOW}⚠${NC}   $1"; }
+error() { echo -e "${RED}✗${NC}  $1"; }
+title() { echo -e "\n${PURPLE}━━━ $1 ━━━${NC}\n"; }
+prompt() { echo -e "${CYAN}?${NC}  $1"; }
+
+# Check dependencies
+check_dependencies() {
+    local missing=()
+    command -v jq >/dev/null 2>&1 || missing+=("jq")
+    command -v git >/dev/null 2>&1 || missing+=("git")
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        error "Missing dependencies: ${missing[*]}"
+        echo "Install with: brew install ${missing[*]}"
+        exit 1
+    fi
+}
+
+# Welcome banner
+show_banner() {
+    echo ""
+    echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
+    echo -e "${PURPLE}║                                        ║${NC}"
+    echo -e "${PURPLE}║  ${CYAN}Dorian - Plan-Driven Development${PURPLE}  ║${NC}"
+    echo -e "${PURPLE}║  ${NC}Initialize your Claude Code project ${PURPLE} ║${NC}"
+    echo -e "${PURPLE}║                                        ║${NC}"
+    echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+# Check if already initialized
+check_existing() {
+    if [[ -f ".dorian.json" ]]; then
+        warning "Project already initialized (.dorian.json exists)"
+        read -p "$(prompt 'Reinitialize? (y/N) ')" -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            info "Initialization cancelled"
+            exit 0
+        fi
+        warning "Backing up existing .dorian.json..."
+        cp .dorian.json .dorian.json.backup
+    fi
+}
+
+# Run detection
+run_detection() {
+    title "Detecting Project Stack"
+
+    info "Analyzing project files..."
+    local detection=$("$SCRIPT_DIR/dorian-detect-stack" . 2>/dev/null || echo "{}")
+
+    # Parse detection results
+    PROJECT_NAME=$(basename "$(pwd)")
+    LANGUAGE=$(echo "$detection" | jq -r '.language // "unknown"')
+    FRAMEWORK=$(echo "$detection" | jq -r '.framework // "none"')
+    PROJECT_TYPE=$(echo "$detection" | jq -r '.project_type // "standard"')
+    PACKAGE_MANAGER=$(echo "$detection" | jq -r '.package_manager // "unknown"')
+    BASE_BRANCH=$(echo "$detection" | jq -r '.base_branch // "main"')
+
+    # Commands
+    TEST_COMMAND=$(echo "$detection" | jq -r '.test_command // ""')
+    BUILD_COMMAND=$(echo "$detection" | jq -r '.build_command // ""')
+    LINT_COMMAND=$(echo "$detection" | jq -r '.lint_command // ""')
+    TYPECHECK_COMMAND=$(echo "$detection" | jq -r '.typecheck_command // ""')
+
+    # Build project type string
+    if [[ "$FRAMEWORK" != "none" ]] && [[ "$FRAMEWORK" != "null" ]]; then
+        PROJECT_TYPE_STR="$FRAMEWORK"
+    else
+        PROJECT_TYPE_STR="$LANGUAGE"
+    fi
+
+    # Show detection results
+    success "Detected: $PROJECT_TYPE_STR"
+    echo ""
+    echo "  Language:       $LANGUAGE"
+    echo "  Framework:      $FRAMEWORK"
+    echo "  Package Mgr:    $PACKAGE_MANAGER"
+    echo "  Base Branch:    $BASE_BRANCH"
+    echo ""
+}
+
+# Confirm detection
+confirm_detection() {
+    title "Confirming Detection"
+
+    read -p "$(prompt 'Is this detection correct? (Y/n) ')" -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        # Manual input
+        read -p "$(prompt 'Project type (nextjs/react/python/rust/go): ')" PROJECT_TYPE_STR
+        read -p "$(prompt 'Base branch (main/master/dev): ')" BASE_BRANCH
+        BASE_BRANCH=${BASE_BRANCH:-main}
+    fi
+
+    success "Project type confirmed: $PROJECT_TYPE_STR"
+}
+
+# Configure quality gates
+configure_quality_gates() {
+    title "Quality Gates Configuration"
+
+    info "Auto-detected commands:"
+    echo ""
+
+    # Test command
+    if [[ -n "$TEST_COMMAND" ]]; then
+        echo "  Tests:      $TEST_COMMAND"
+        read -p "$(prompt 'Use this test command? (Y/n) ')" -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            read -p "$(prompt 'Test command: ')" TEST_COMMAND
+        fi
+    else
+        read -p "$(prompt 'Test command (or Enter to skip): ')" TEST_COMMAND
+    fi
+
+    # Type check command
+    if [[ -n "$TYPECHECK_COMMAND" ]]; then
+        echo "  Type check: $TYPECHECK_COMMAND"
+        read -p "$(prompt 'Use this typecheck command? (Y/n) ')" -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            read -p "$(prompt 'Typecheck command: ')" TYPECHECK_COMMAND
+        fi
+    elif [[ "$LANGUAGE" == "typescript" ]]; then
+        read -p "$(prompt 'Typecheck command (e.g., tsc --noEmit): ')" TYPECHECK_COMMAND
+    fi
+
+    # Lint command
+    if [[ -n "$LINT_COMMAND" ]]; then
+        echo "  Lint:       $LINT_COMMAND"
+        read -p "$(prompt 'Use this lint command? (Y/n) ')" -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            read -p "$(prompt 'Lint command: ')" LINT_COMMAND
+        fi
+    else
+        read -p "$(prompt 'Lint command (or Enter to skip): ')" LINT_COMMAND
+    fi
+
+    # Build command
+    if [[ -n "$BUILD_COMMAND" ]]; then
+        echo "  Build:      $BUILD_COMMAND"
+        read -p "$(prompt 'Use this build command? (Y/n) ')" -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Nn]$ ]]; then
+            read -p "$(prompt 'Build command: ')" BUILD_COMMAND
+        fi
+    else
+        read -p "$(prompt 'Build command (or Enter to skip): ')" BUILD_COMMAND
+    fi
+
+    echo ""
+    success "Quality gates configured"
+}
+
+# Configure MCP servers
+configure_mcp() {
+    title "MCP Server Configuration"
+
+    # Recommend MCPs based on stack
+    local recommended_mcps=()
+
+    case "$FRAMEWORK" in
+        nextjs)
+            recommended_mcps=("chrome-devtools" "nextjs")
+            ;;
+        react|vite-react)
+            recommended_mcps=("chrome-devtools")
+            ;;
+        fastapi|django|flask)
+            recommended_mcps=("chrome-devtools")
+            ;;
+    esac
+
+    if [[ ${#recommended_mcps[@]} -gt 0 ]]; then
+        info "Recommended MCP servers for $FRAMEWORK:"
+        echo ""
+        for mcp in "${recommended_mcps[@]}"; do
+            echo "  ✓ $mcp"
+        done
+        echo ""
+        read -p "$(prompt 'Setup MCP servers now? (Y/n) ')" -n 1 -r
+        echo
+
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            MCP_ENABLED="true"
+            MCP_SERVERS=$(IFS=,; echo "${recommended_mcps[*]}")
+            create_mcp_json "${recommended_mcps[@]}"
+        else
+            MCP_ENABLED="false"
+            MCP_SERVERS=""
+        fi
+    else
+        info "No specific MCP recommendations for this stack"
+        read -p "$(prompt 'Setup MCP servers manually later? (y/N) ')" -n 1 -r
+        echo
+        MCP_ENABLED="false"
+        MCP_SERVERS=""
+    fi
+}
+
+# Create .mcp.json
+create_mcp_json() {
+    local mcps=("$@")
+
+    cat > .mcp.json <<EOF
+{
+  "mcpServers": {
+EOF
+
+    local first=true
+    for mcp in "${mcps[@]}"; do
+        if [[ "$first" == false ]]; then
+            echo "," >> .mcp.json
+        fi
+        first=false
+
+        case "$mcp" in
+            chrome-devtools)
+                cat >> .mcp.json <<'EOFMCP'
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp"]
+    }
+EOFMCP
+                ;;
+            nextjs)
+                cat >> .mcp.json <<'EOFMCP'
+    "nextjs": {
+      "command": "npx",
+      "args": ["-y", "next-devtools-mcp@latest"]
+    }
+EOFMCP
+                ;;
+        esac
+    done
+
+    cat >> .mcp.json <<EOF
+
+  }
+}
+EOF
+
+    success "Created .mcp.json"
+    warning "Remember to add .mcp.json to .gitignore"
+}
+
+# Configure plugins
+configure_plugins() {
+    title "Plugin Configuration"
+
+    local plugins=()
+
+    # Recommend plugins based on stack
+    case "$FRAMEWORK" in
+        nextjs|react|vite-react|vue|svelte)
+            info "Recommended plugins for $FRAMEWORK:"
+            echo ""
+            echo "  ✓ security-guidance    - Real-time security scanning"
+            echo "  ✓ pr-review-toolkit    - 6 specialized PR review agents"
+            echo "  ✓ frontend-design      - UI/UX design principles"
+            echo ""
+            read -p "$(prompt 'Install all recommended plugins? (Y/n) ')" -n 1 -r
+            echo
+
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                plugins=("security-guidance" "pr-review-toolkit" "frontend-design")
+            else
+                # Ask individually
+                read -p "$(prompt 'Install security-guidance? (Y/n) ')" -n 1 -r
+                echo
+                [[ ! $REPLY =~ ^[Nn]$ ]] && plugins+=("security-guidance")
+
+                read -p "$(prompt 'Install pr-review-toolkit? (Y/n) ')" -n 1 -r
+                echo
+                [[ ! $REPLY =~ ^[Nn]$ ]] && plugins+=("pr-review-toolkit")
+
+                read -p "$(prompt 'Install frontend-design? (Y/n) ')" -n 1 -r
+                echo
+                [[ ! $REPLY =~ ^[Nn]$ ]] && plugins+=("frontend-design")
+            fi
+            ;;
+        *)
+            info "Recommended plugins for general projects:"
+            echo ""
+            echo "  ✓ security-guidance    - Real-time security scanning"
+            echo "  ✓ pr-review-toolkit    - 6 specialized PR review agents"
+            echo ""
+            read -p "$(prompt 'Install recommended plugins? (Y/n) ')" -n 1 -r
+            echo
+
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                plugins=("security-guidance" "pr-review-toolkit")
+            fi
+            ;;
+    esac
+
+    # Install plugins
+    if [[ ${#plugins[@]} -gt 0 ]]; then
+        install_plugins "${plugins[@]}"
+        PLUGINS_INSTALLED="true"
+        PLUGINS_LIST=$(IFS=,; echo "${plugins[*]}")
+    else
+        info "No plugins installed"
+        PLUGINS_INSTALLED="false"
+        PLUGINS_LIST=""
+    fi
+}
+
+# Install plugins
+install_plugins() {
+    local plugins=("$@")
+    local plugin_src="$TEMPLATE_DIR/plugins"
+
+    # Check if .claude exists
+    local target_dir=".claude/plugins"
+    if [[ -L ".claude" ]]; then
+        # It's a symlink, use target
+        target_dir="$(readlink .claude)/plugins"
+    fi
+
+    mkdir -p "$target_dir"
+
+    for plugin in "${plugins[@]}"; do
+        if [[ -d "$plugin_src/$plugin" ]]; then
+            cp -r "$plugin_src/$plugin" "$target_dir/"
+            success "Installed plugin: $plugin"
+        else
+            warning "Plugin not found in templates: $plugin"
+        fi
+    done
+
+    echo ""
+    info "Plugins installed in .claude/plugins/"
+    warning "Plugins are committed to git (project-specific)"
+}
+
+# Create .dorian.json
+create_dorian_json() {
+    title "Creating Configuration Files"
+
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    cat > .dorian.json <<EOF
+{
+  "version": "1.0",
+  "project": {
+    "name": "$PROJECT_NAME",
+    "type": "$PROJECT_TYPE_STR",
+    "initialized": "$timestamp",
+    "description": "Auto-generated by dorian init"
+  },
+  "quality_gates": {
+    "test": {
+      "command": "${TEST_COMMAND:-echo 'No test command configured'}",
+      "on_fail": "stop",
+      "enabled": $(if [[ -n "$TEST_COMMAND" ]]; then echo "true"; else echo "false"; fi)
+    },
+    "typecheck": {
+      "command": "${TYPECHECK_COMMAND:-echo 'No typecheck command configured'}",
+      "exclude_patterns": ["__tests__", "**/*.test.*", "**/*.spec.*"],
+      "on_fail": "stop",
+      "enabled": $(if [[ -n "$TYPECHECK_COMMAND" ]]; then echo "true"; else echo "false"; fi)
+    },
+    "lint": {
+      "command": "${LINT_COMMAND:-echo 'No lint command configured'}",
+      "on_fail": "warn",
+      "enabled": $(if [[ -n "$LINT_COMMAND" ]]; then echo "true"; else echo "false"; fi)
+    },
+    "build": {
+      "command": "${BUILD_COMMAND:-echo 'No build command configured'}",
+      "on_fail": "stop",
+      "enabled": $(if [[ -n "$BUILD_COMMAND" ]]; then echo "true"; else echo "false"; fi)
+    }
+  },
+  "git": {
+    "base_branch": "$BASE_BRANCH",
+    "branch_prefix": "feat/",
+    "commit_convention": "conventional",
+    "merge_strategy": "squash"
+  },
+  "mcp": {
+    "project_servers": [$(if [[ -n "$MCP_SERVERS" ]]; then echo "\"${MCP_SERVERS//,/\",\"}\""; fi)],
+    "enabled": $MCP_ENABLED,
+    "config_path": "./.mcp.json"
+  },
+  "execution": {
+    "current_plan": null,
+    "last_executed": null,
+    "last_execution_time": null,
+    "mode": "classic"
+  },
+  "agent_behavior": {
+    "auto_commit_steps": true,
+    "stop_on_quality_gate_fail": true,
+    "create_pr_on_completion": true,
+    "archive_completed_plans": false
+  }
+}
+EOF
+
+    success "Created .dorian.json"
+}
+
+# Create CLAUDE.md
+create_claude_md() {
+    local date=$(date +"%Y-%m-%d")
+
+    cat > CLAUDE.md <<EOF
+# Project: $PROJECT_NAME
+
+**Type**: $PROJECT_TYPE_STR
+**Generated**: $date
+**Last Updated**: $date
+
+## Tech Stack
+
+### Core
+- **Language**: $LANGUAGE
+- **Framework**: ${FRAMEWORK:-N/A}
+- **Package Manager**: ${PACKAGE_MANAGER:-N/A}
+
+## Quality Gates
+
+- **Tests**: \`${TEST_COMMAND:-Not configured}\`
+- **Type Check**: \`${TYPECHECK_COMMAND:-Not configured}\`
+- **Lint**: \`${LINT_COMMAND:-Not configured}\`
+- **Build**: \`${BUILD_COMMAND:-Not configured}\`
+
+## Development Workflow
+
+\`\`\`bash
+# Install dependencies
+${PACKAGE_MANAGER} install
+
+# Run tests
+${TEST_COMMAND}
+
+# Build
+${BUILD_COMMAND}
+\`\`\`
+
+## Patterns & Conventions
+
+### Commits
+- Format: \`type(scope): message\`
+- Types: feat, fix, docs, refactor, test, chore
+
+### Branching
+- Base: \`$BASE_BRANCH\`
+- Feature: \`feat/feature-name\`
+- Bugfix: \`fix/bug-name\`
+
+## Notes for AI Agents
+
+- This project uses dorian for plan-driven development
+- All plans are versioned in \`.claude/plans/\`
+- Quality gates must pass before PR creation
+- Use \`dorian plan\` to create execution plans
+- Use \`dorian exec\` to execute plans
+
+---
+
+*This file is auto-generated by \`dorian init\`. Keep it updated as the project evolves.*
+*Last updated: $date*
+EOF
+
+    success "Created CLAUDE.md"
+}
+
+# Setup .claude directory
+setup_claude_directory() {
+    title "Setting Up Agent System"
+
+    # Check if we're in a bare repo worktree
+    local parent_dir=$(dirname "$(pwd)")
+    local in_bare_worktree=false
+
+    if [[ -f "$parent_dir/.bare" ]] || { [[ -d "$parent_dir/.git" ]] && git -C "$parent_dir" rev-parse --is-bare-repository 2>/dev/null | grep -q "true"; }; then
+        in_bare_worktree=true
+        info "Detected bare repository worktree setup"
+
+        if [[ -d "$parent_dir/.claude" ]]; then
+            # Symlink to parent's .claude
+            ln -sf "$parent_dir/.claude" .claude
+            success "Symlinked .claude from bare repo"
+        else
+            # Create in parent
+            mkdir -p "$parent_dir/.claude"/{commands,agents,scripts,plans}
+            ln -s "$parent_dir/.claude" .claude
+            success "Created .claude in bare repo and symlinked"
+
+            # Copy agent templates
+            if [[ -d "$TEMPLATE_DIR" ]]; then
+                cp -r "$TEMPLATE_DIR"/* "$parent_dir/.claude/" 2>/dev/null || true
+            fi
+        fi
+    else
+        # Regular project
+        if [[ ! -d ".claude" ]]; then
+            mkdir -p .claude/{commands,agents,scripts,plans}
+            success "Created .claude directory"
+
+            # Copy agent templates
+            if [[ -d "$TEMPLATE_DIR" ]]; then
+                cp -r "$TEMPLATE_DIR"/* .claude/ 2>/dev/null || true
+            fi
+        fi
+    fi
+
+    # Ensure plans directory exists
+    if [[ -L ".claude" ]]; then
+        # It's a symlink, create in target
+        mkdir -p "$(readlink .claude)/plans"
+    else
+        mkdir -p .claude/plans
+    fi
+
+    success "Agent system configured"
+}
+
+# Update .gitignore
+update_gitignore() {
+    title "Updating .gitignore"
+
+    if [[ ! -f ".gitignore" ]]; then
+        touch .gitignore
+    fi
+
+    # Add dorian-specific ignores
+    if ! grep -q ".dorian.json" .gitignore 2>/dev/null; then
+        cat >> .gitignore <<EOF
+
+# Dorian local configuration (not committed)
+.dorian.json
+.dorian.json.backup
+.dorian.json.tmp
+.mcp.json
+.mcp.json.disabled
+
+# Claude plans and workflow (local only)
+.claude/
+EOF
+        success "Updated .gitignore"
+    else
+        info ".gitignore already configured"
+    fi
+}
+
+# Show next steps
+show_next_steps() {
+    title "Installation Complete!"
+
+    echo ""
+    success "Project initialized successfully"
+    echo ""
+    echo "Files created:"
+    echo "  ✓ .dorian.json      (local config - not committed)"
+    echo "  ✓ CLAUDE.md         (project docs - committed)"
+    if [[ "$MCP_ENABLED" == "true" ]]; then
+        echo "  ✓ .mcp.json         (MCP config - not committed)"
+    fi
+    echo "  ✓ .claude/          (agent system)"
+    if [[ "$PLUGINS_INSTALLED" == "true" ]]; then
+        echo "  ✓ .claude/plugins/  ($PLUGINS_LIST)"
+    fi
+    echo ""
+    echo "Next steps:"
+    echo ""
+    echo "  1. Review and commit CLAUDE.md and plugins:"
+    if [[ "$PLUGINS_INSTALLED" == "true" ]]; then
+        echo "     git add CLAUDE.md .claude/"
+    else
+        echo "     git add CLAUDE.md .claude/"
+    fi
+    echo "     git commit -m 'docs: add Claude Code project configuration'"
+    echo ""
+    if [[ "$MCP_ENABLED" == "true" ]]; then
+        echo "  2. Restart Claude Code to load MCP servers:"
+        echo "     exit && claude"
+        echo ""
+    fi
+    echo "  3. Create your first plan:"
+    echo "     dorian plan \"Add your feature\""
+    echo ""
+    echo "  4. Check project status:"
+    echo "     dorian status"
+    echo ""
+    info "Happy coding with plan-driven development!"
+    echo ""
+}
+
+# Main flow
+main() {
+    check_dependencies
+    show_banner
+    check_existing
+    run_detection
+    confirm_detection
+    configure_quality_gates
+    configure_mcp
+    configure_plugins
+    create_dorian_json
+    create_claude_md
+    setup_claude_directory
+    update_gitignore
+    show_next_steps
+}
+
+main "$@"

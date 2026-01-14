@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+# dorian-detect-stack - Auto-detect tech stack from project files
+# Usage: dorian-detect-stack [project-dir]
+
+set -eo pipefail
+
+PROJECT_DIR="${1:-.}"
+cd "$PROJECT_DIR"
+
+# Output will be JSON for easy parsing
+OUTPUT_JSON="{}"
+
+# Helper to add to JSON (simple approach without jq dependency)
+add_to_json() {
+    local key=$1
+    local value=$2
+    # Store in associative array for later JSON construction
+    DETECTED["$key"]="$value"
+}
+
+declare -A DETECTED
+
+# Detect package manager and language
+detect_javascript_ecosystem() {
+    if [[ -f "package.json" ]]; then
+        DETECTED["has_package_json"]="true"
+
+        # Detect package manager
+        if [[ -f "bun.lockb" ]]; then
+            DETECTED["package_manager"]="bun"
+        elif [[ -f "pnpm-lock.yaml" ]]; then
+            DETECTED["package_manager"]="pnpm"
+        elif [[ -f "yarn.lock" ]]; then
+            DETECTED["package_manager"]="yarn"
+        elif [[ -f "package-lock.json" ]]; then
+            DETECTED["package_manager"]="npm"
+        else
+            DETECTED["package_manager"]="npm"
+        fi
+
+        # Detect framework
+        if command -v jq >/dev/null 2>&1; then
+            # Use jq if available
+            if jq -e '.dependencies.next or .devDependencies.next' package.json >/dev/null 2>&1; then
+                DETECTED["framework"]="nextjs"
+                DETECTED["framework_version"]=$(jq -r '.dependencies.next // .devDependencies.next' package.json)
+            elif jq -e '.dependencies.react or .devDependencies.react' package.json >/dev/null 2>&1; then
+                if jq -e '.dependencies.vite or .devDependencies.vite' package.json >/dev/null 2>&1; then
+                    DETECTED["framework"]="vite-react"
+                else
+                    DETECTED["framework"]="react"
+                fi
+            elif jq -e '.dependencies.vue or .devDependencies.vue' package.json >/dev/null 2>&1; then
+                DETECTED["framework"]="vue"
+            elif jq -e '.dependencies.svelte or .devDependencies.svelte' package.json >/dev/null 2>&1; then
+                DETECTED["framework"]="svelte"
+            fi
+
+            # Detect TypeScript
+            if jq -e '.devDependencies.typescript' package.json >/dev/null 2>&1; then
+                DETECTED["language"]="typescript"
+                DETECTED["typescript_version"]=$(jq -r '.devDependencies.typescript' package.json)
+            else
+                DETECTED["language"]="javascript"
+            fi
+
+            # Detect test framework
+            if jq -e '.devDependencies.vitest' package.json >/dev/null 2>&1; then
+                DETECTED["test_framework"]="vitest"
+            elif jq -e '.devDependencies.jest' package.json >/dev/null 2>&1; then
+                DETECTED["test_framework"]="jest"
+            elif [[ "${DETECTED[package_manager]}" == "bun" ]]; then
+                DETECTED["test_framework"]="bun:test"
+            fi
+
+            # Detect linter
+            if jq -e '.devDependencies."@biomejs/biome"' package.json >/dev/null 2>&1; then
+                DETECTED["linter"]="biome"
+            elif jq -e '.devDependencies.eslint' package.json >/dev/null 2>&1; then
+                DETECTED["linter"]="eslint"
+            fi
+
+            # Detect scripts
+            DETECTED["test_command"]=$(jq -r '.scripts.test // empty' package.json)
+            DETECTED["build_command"]=$(jq -r '.scripts.build // empty' package.json)
+            DETECTED["lint_command"]=$(jq -r '.scripts.lint // .scripts.check // empty' package.json)
+            DETECTED["dev_command"]=$(jq -r '.scripts.dev // .scripts.start // empty' package.json)
+        else
+            # Fallback without jq (basic grep)
+            if grep -q '"next"' package.json; then
+                DETECTED["framework"]="nextjs"
+            elif grep -q '"react"' package.json; then
+                DETECTED["framework"]="react"
+            fi
+
+            if grep -q '"typescript"' package.json; then
+                DETECTED["language"]="typescript"
+            fi
+        fi
+
+        # Auto-detect typecheck command
+        if [[ "${DETECTED[language]}" == "typescript" ]]; then
+            if [[ -f "tsconfig.json" ]]; then
+                DETECTED["typecheck_command"]="tsc --noEmit"
+            fi
+        fi
+    fi
+}
+
+# Detect Python
+detect_python() {
+    if [[ -f "pyproject.toml" ]] || [[ -f "requirements.txt" ]] || [[ -f "setup.py" ]]; then
+        DETECTED["language"]="python"
+
+        if [[ -f "pyproject.toml" ]]; then
+            # Detect framework
+            if grep -q "fastapi" pyproject.toml; then
+                DETECTED["framework"]="fastapi"
+            elif grep -q "django" pyproject.toml; then
+                DETECTED["framework"]="django"
+            elif grep -q "flask" pyproject.toml; then
+                DETECTED["framework"]="flask"
+            fi
+
+            # Detect test framework
+            if grep -q "pytest" pyproject.toml; then
+                DETECTED["test_framework"]="pytest"
+                DETECTED["test_command"]="pytest"
+            fi
+
+            # Detect linter
+            if grep -q "ruff" pyproject.toml; then
+                DETECTED["linter"]="ruff"
+                DETECTED["lint_command"]="ruff check ."
+            elif grep -q "pylint" pyproject.toml; then
+                DETECTED["linter"]="pylint"
+            fi
+
+            # Detect type checker
+            if grep -q "mypy" pyproject.toml; then
+                DETECTED["typecheck_command"]="mypy ."
+            fi
+        fi
+    fi
+}
+
+# Detect Rust
+detect_rust() {
+    if [[ -f "Cargo.toml" ]]; then
+        DETECTED["language"]="rust"
+        DETECTED["build_system"]="cargo"
+        DETECTED["test_command"]="cargo test"
+        DETECTED["build_command"]="cargo build --release"
+        DETECTED["lint_command"]="cargo clippy"
+        DETECTED["typecheck_command"]="cargo check"
+    fi
+}
+
+# Detect Go
+detect_go() {
+    if [[ -f "go.mod" ]]; then
+        DETECTED["language"]="go"
+        DETECTED["build_system"]="go"
+        DETECTED["test_command"]="go test ./..."
+        DETECTED["build_command"]="go build ./..."
+        DETECTED["lint_command"]="golangci-lint run"
+
+        # Detect framework
+        if grep -q "gin-gonic/gin" go.mod; then
+            DETECTED["framework"]="gin"
+        elif grep -q "gorilla/mux" go.mod; then
+            DETECTED["framework"]="gorilla"
+        fi
+    fi
+}
+
+# Detect project type (monorepo, etc.)
+detect_project_structure() {
+    if [[ -f "pnpm-workspace.yaml" ]] || [[ -f "lerna.json" ]] || [[ -d "packages" ]]; then
+        DETECTED["project_type"]="monorepo"
+    else
+        DETECTED["project_type"]="standard"
+    fi
+
+    # Detect if turborepo
+    if [[ -f "turbo.json" ]]; then
+        DETECTED["monorepo_tool"]="turborepo"
+    elif [[ -f "nx.json" ]]; then
+        DETECTED["monorepo_tool"]="nx"
+    fi
+}
+
+# Detect git info
+detect_git_info() {
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        DETECTED["is_git_repo"]="true"
+
+        # Detect default branch
+        local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+        if [[ -z "$default_branch" ]]; then
+            # Fallback: check if main or master exists
+            if git show-ref --verify --quiet refs/heads/main; then
+                default_branch="main"
+            elif git show-ref --verify --quiet refs/heads/master; then
+                default_branch="master"
+            else
+                default_branch="main"  # assume main
+            fi
+        fi
+        DETECTED["base_branch"]="$default_branch"
+    else
+        DETECTED["is_git_repo"]="false"
+        DETECTED["base_branch"]="main"
+    fi
+}
+
+# Run all detections
+detect_javascript_ecosystem
+detect_python
+detect_rust
+detect_go
+detect_project_structure
+detect_git_info
+
+# Build JSON output
+echo "{"
+first=true
+for key in "${!DETECTED[@]}"; do
+    value="${DETECTED[$key]}"
+    if [[ "$first" == true ]]; then
+        first=false
+    else
+        echo ","
+    fi
+    echo -n "  \"$key\": \"$value\""
+done
+echo ""
+echo "}"

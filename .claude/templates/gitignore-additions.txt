@@ -1,0 +1,23 @@
+# Dorian - Plan-Driven Development
+# Add these lines to your .gitignore
+
+# Local dorian configuration (machine-specific)
+.dorian.json
+.dorian.json.backup
+.dorian.json.tmp
+
+# MCP configuration (machine-specific, contains absolute paths)
+.mcp.json
+.mcp.json.disabled
+.mcp.json.backup
+*.mcp.json.old
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Note: The following ARE committed:
+# - CLAUDE.md (project documentation)
+# - .claude/agents/ (agent rules)
+# - .claude/commands/ (slash commands)
+# - .claude/plans/ (versioned plans)
+# - .claude/scripts/ (utility scripts)

@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# rollback-landing-migration - Rollback landing→dorian migration
+# Usage: rollback-landing-migration <backup-dir-name> [landing-path]
+
+set -eo pipefail
+
+BACKUP_DIR="${1}"
+LANDING_PATH="${2:-/Users/nerap/work/landing.git}"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+info() { echo -e "${BLUE}ℹ${NC}  $1"; }
+success() { echo -e "${GREEN}✓${NC}  $1"; }
+warning() { echo -e "${YELLOW}⚠${NC}   $1"; }
+error() { echo -e "${RED}✗${NC}  $1"; }
+
+# Validate input
+if [[ -z "$BACKUP_DIR" ]]; then
+    error "Usage: rollback-landing-migration <backup-dir-name> [landing-path]"
+    echo ""
+    echo "Example: rollback-landing-migration .claude-backup-20260114-140530"
+    echo ""
+    info "Available backups:"
+    cd "$LANDING_PATH" 2>/dev/null && ls -d .claude-backup-* 2>/dev/null || echo "  No backups found"
+    exit 1
+fi
+
+# Verify paths
+if [[ ! -d "$LANDING_PATH" ]]; then
+    error "Landing path not found: $LANDING_PATH"
+    exit 1
+fi
+
+if [[ ! -d "$LANDING_PATH/$BACKUP_DIR" ]]; then
+    error "Backup not found: $LANDING_PATH/$BACKUP_DIR"
+    echo ""
+    info "Available backups:"
+    cd "$LANDING_PATH" && ls -d .claude-backup-* 2>/dev/null || echo "  No backups found"
+    exit 1
+fi
+
+# Confirm rollback
+warning "This will restore the original .claude/ directory"
+echo ""
+echo "Current:"
+echo "  .claude/ - Modified (dorian system)"
+echo ""
+echo "Will restore to:"
+echo "  $BACKUP_DIR - Original (landing system)"
+echo ""
+echo "Changes that will be reverted:"
+echo "  - Generic agents → landing-specific agents"
+echo "  - Flat plans/ → active/completed structure"
+echo "  - Plugins removed"
+echo "  - .dorian.json files kept (manual cleanup if needed)"
+echo ""
+read -p "$(echo -e ${RED}⚠${NC}   'Continue with rollback? (y/N) ')" -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    info "Rollback cancelled"
+    exit 0
+fi
+
+# Perform rollback
+cd "$LANDING_PATH"
+
+info "Removing current .claude/..."
+rm -rf .claude
+
+info "Restoring from backup..."
+cp -r "$BACKUP_DIR" .claude
+
+success "Restored .claude/ from backup"
+
+# Commit rollback
+git add .claude/
+git commit -m "revert: rollback dorian migration
+
+Restored .claude/ from backup: $BACKUP_DIR
+
+Reason for rollback: [Add reason here]
+
+To re-migrate: migrate-landing-to-dorian"
+
+success "Rollback committed"
+
+echo ""
+success "Rollback complete!"
+echo ""
+info "Restored to original landing system"
+echo ""
+warning "Manual cleanup needed:"
+echo "  - .dorian.json files in worktrees (optional)"
+echo "  - .gitignore dorian entries (optional)"
+echo ""

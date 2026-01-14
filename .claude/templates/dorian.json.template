@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "project": {
+    "name": "{{PROJECT_NAME}}",
+    "type": "{{PROJECT_TYPE}}",
+    "initialized": "{{TIMESTAMP}}",
+    "description": "{{DESCRIPTION}}"
+  },
+  "quality_gates": {
+    "test": {
+      "command": "{{TEST_COMMAND}}",
+      "on_fail": "stop",
+      "enabled": true
+    },
+    "typecheck": {
+      "command": "{{TYPECHECK_COMMAND}}",
+      "exclude_patterns": ["__tests__", "**/*.test.*", "**/*.spec.*"],
+      "on_fail": "stop",
+      "enabled": true
+    },
+    "lint": {
+      "command": "{{LINT_COMMAND}}",
+      "on_fail": "warn",
+      "enabled": true
+    },
+    "build": {
+      "command": "{{BUILD_COMMAND}}",
+      "on_fail": "stop",
+      "enabled": true
+    }
+  },
+  "git": {
+    "base_branch": "{{BASE_BRANCH}}",
+    "branch_prefix": "feat/",
+    "commit_convention": "conventional",
+    "merge_strategy": "squash"
+  },
+  "mcp": {
+    "project_servers": [],
+    "enabled": false,
+    "config_path": "./.mcp.json"
+  },
+  "execution": {
+    "current_plan": null,
+    "last_executed": null,
+    "last_execution_time": null,
+    "mode": "classic"
+  },
+  "agent_behavior": {
+    "auto_commit_steps": true,
+    "stop_on_quality_gate_fail": true,
+    "create_pr_on_completion": true,
+    "archive_completed_plans": true
+  }
+}
