@@ -36,6 +36,44 @@ check_dependencies() {
     fi
 }
 
+# Smart project name detection for worktrees and monorepos
+detect_project_name() {
+    local name=""
+
+    # 1. Check if in bare repo worktree (e.g., /work/agency.git/1/)
+    local parent_dir=$(dirname "$(pwd)")
+
+    if [[ "$parent_dir" == *.git ]] || [[ -f "$parent_dir/.bare" ]]; then
+        # Extract name from bare repo dir: agency.git -> agency
+        name=$(basename "$parent_dir" | sed 's/\.git$//')
+    fi
+
+    # 2. Check package.json name field (strip monorepo suffix)
+    if [[ -z "$name" ]] && [[ -f "package.json" ]] && command -v jq >/dev/null 2>&1; then
+        local pkg_name=$(jq -r '.name // empty' package.json)
+        if [[ -n "$pkg_name" ]]; then
+            # Remove common suffixes: -monorepo, -workspace, etc.
+            name=$(echo "$pkg_name" | sed -E 's/-(monorepo|workspace|root)$//')
+        fi
+    fi
+
+    # 3. Check git remote URL
+    if [[ -z "$name" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
+        local remote_url=$(git remote get-url origin 2>/dev/null)
+        if [[ -n "$remote_url" ]]; then
+            # Extract repo name from URL
+            name=$(basename "$remote_url" .git)
+        fi
+    fi
+
+    # 4. Fallback to current directory basename
+    if [[ -z "$name" ]]; then
+        name=$(basename "$(pwd)")
+    fi
+
+    echo "$name"
+}
+
 # Welcome banner
 show_banner() {
     echo ""
@@ -71,7 +109,7 @@ run_detection() {
     local detection=$("$SCRIPT_DIR/dorian-detect-stack" . 2>/dev/null || echo "{}")
 
     # Parse detection results
-    PROJECT_NAME=$(basename "$(pwd)")
+    PROJECT_NAME=$(detect_project_name)
     LANGUAGE=$(echo "$detection" | jq -r '.language // "unknown"')
     FRAMEWORK=$(echo "$detection" | jq -r '.framework // "none"')
     PROJECT_TYPE=$(echo "$detection" | jq -r '.project_type // "standard"')
@@ -358,6 +396,35 @@ install_plugins() {
     warning "Plugins are committed to git (project-specific)"
 }
 
+# Check for .dorian.json.template and use it as base configuration
+check_template_config() {
+    if [[ ! -f ".dorian.json.template" ]]; then
+        return 1
+    fi
+
+    title "Using Template Configuration"
+    info "Found .dorian.json.template - using as base configuration"
+
+    # Copy template as starting point
+    cp .dorian.json.template .dorian.json
+
+    # Update dynamic fields only (project name and timestamp)
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local tmp=$(mktemp)
+
+    jq --arg name "$PROJECT_NAME" \
+       --arg ts "$timestamp" \
+       '.project.name = $name | .project.initialized = $ts' \
+       .dorian.json > "$tmp" && mv "$tmp" .dorian.json
+
+    success "Created .dorian.json from template"
+    success "  Project name: $PROJECT_NAME"
+
+    # Skip quality gates, MCP, and plugins configuration since template has them
+    SKIP_INTERACTIVE_CONFIG="true"
+    return 0
+}
+
 # Create .dorian.json
 create_dorian_json() {
     title "Creating Configuration Files"
@@ -423,6 +490,37 @@ create_dorian_json() {
 EOF
 
     success "Created .dorian.json"
+}
+
+# Check if existing CLAUDE.md should be preserved
+should_preserve_claude_md() {
+    if [[ ! -f "CLAUDE.md" ]]; then
+        return 1  # No existing file
+    fi
+
+    local size=$(wc -c < "CLAUDE.md" | tr -d ' ')
+    if [[ $size -gt 2048 ]]; then
+        return 0  # File is substantial (> 2KB), preserve it
+    fi
+
+    return 1  # File is minimal, regenerate
+}
+
+# Handle CLAUDE.md with preservation option
+setup_claude_md() {
+    if should_preserve_claude_md; then
+        local size=$(wc -c < "CLAUDE.md" | tr -d ' ')
+        info "Existing CLAUDE.md detected (${size} bytes)"
+        read -p "$(prompt 'Preserve existing CLAUDE.md? (Y/n) ')" -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            success "Preserving existing CLAUDE.md"
+            return
+        fi
+        warning "Backing up to CLAUDE.md.backup..."
+        cp CLAUDE.md CLAUDE.md.backup
+    fi
+    create_claude_md
 }
 
 # Create CLAUDE.md
@@ -619,12 +717,24 @@ main() {
     show_banner
     check_existing
     run_detection
+
+    # Check for template first - if found, skip interactive configuration
+    if check_template_config; then
+        # Template found - skip to CLAUDE.md and directory setup
+        setup_claude_md
+        setup_claude_directory
+        update_gitignore
+        show_next_steps
+        return
+    fi
+
+    # No template - run full interactive configuration
     confirm_detection
     configure_quality_gates
     configure_mcp
     configure_plugins
     create_dorian_json
-    create_claude_md
+    setup_claude_md
     setup_claude_directory
     update_gitignore
     show_next_steps
