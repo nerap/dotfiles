@@ -595,47 +595,40 @@ setup_claude_directory() {
 
     # Check if we're in a bare repo worktree
     local parent_dir=$(dirname "$(pwd)")
-    local in_bare_worktree=false
+    local target_dir=".claude"
 
-    if [[ -f "$parent_dir/.bare" ]] || { [[ -d "$parent_dir/.git" ]] && git -C "$parent_dir" rev-parse --is-bare-repository 2>/dev/null | grep -q "true"; }; then
-        in_bare_worktree=true
+    if [[ -f "$parent_dir/.bare" ]] || [[ "$parent_dir" == *.git ]]; then
         info "Detected bare repository worktree setup"
 
-        if [[ -d "$parent_dir/.claude" ]]; then
-            # Symlink to parent's .claude
-            ln -sf "$parent_dir/.claude" .claude
+        # Use parent's .claude directory
+        target_dir="$parent_dir/.claude"
+        mkdir -p "$target_dir"
+
+        # Symlink from worktree to parent
+        if [[ ! -L ".claude" ]] || [[ "$(readlink .claude)" != "$target_dir" ]]; then
+            rm -rf .claude 2>/dev/null || true
+            ln -sf "$target_dir" .claude
             success "Symlinked .claude from bare repo"
-        else
-            # Create in parent
-            mkdir -p "$parent_dir/.claude"/{commands,agents,scripts,plans}
-            ln -s "$parent_dir/.claude" .claude
-            success "Created .claude in bare repo and symlinked"
-
-            # Copy agent templates
-            if [[ -d "$TEMPLATE_DIR" ]]; then
-                cp -r "$TEMPLATE_DIR"/* "$parent_dir/.claude/" 2>/dev/null || true
-            fi
         fi
     else
-        # Regular project
-        if [[ ! -d ".claude" ]]; then
-            mkdir -p .claude/{commands,agents,scripts,plans}
-            success "Created .claude directory"
+        # Regular project - create .claude directory
+        mkdir -p "$target_dir"
+    fi
 
-            # Copy agent templates
-            if [[ -d "$TEMPLATE_DIR" ]]; then
-                cp -r "$TEMPLATE_DIR"/* .claude/ 2>/dev/null || true
+    # Always ensure template symlinks exist in target directory
+    if [[ -d "$TEMPLATE_DIR" ]]; then
+        # Create symlinks to templates (agents, commands, plugins)
+        for subdir in agents commands plugins; do
+            if [[ -d "$TEMPLATE_DIR/$subdir" ]] && [[ ! -e "$target_dir/$subdir" ]]; then
+                ln -sf "$TEMPLATE_DIR/$subdir" "$target_dir/$subdir"
+                success "Linked $subdir from templates"
             fi
-        fi
+        done
     fi
 
-    # Ensure plans directory exists
-    if [[ -L ".claude" ]]; then
-        # It's a symlink, create in target
-        mkdir -p "$(readlink .claude)/plans"
-    else
-        mkdir -p .claude/plans
-    fi
+    # Ensure required directories exist
+    mkdir -p "$target_dir/plans"
+    mkdir -p "$target_dir/scripts"
 
     success "Agent system configured"
 }
