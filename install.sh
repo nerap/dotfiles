@@ -148,12 +148,14 @@ echo "----- setup: tmux -----"
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 # Personnal space git clone
-git clone git@github.com:nerap/nvim.git ~/personal/nvim
-git clone git@github.com:nerap/tmux.git ~/personal/tmux
-git clone git@github.com:nerap/zsh.git ~/personal/zsh
-git clone git@github.com:nerap/aerospace.git ~/personal/aerospace
-git clone git@github.com:nerap/alacritty.git ~/personal/alacritty
-git clone git@github.com:nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
+git clone git@github.com:nerap/nvim.git ~/config/nvim
+git clone git@github.com:nerap/tmux.git ~/config/tmux
+git clone git@github.com:nerap/zsh.git ~/config/zsh
+git clone git@github.com:nerap/aerospace.git ~/config/aerospace
+git clone git@github.com:nerap/alacritty.git ~/config/alacritty
+git clone git@github.com:nerap/dotclaude.git ~/config/dotclaude
+# Not used anymore
+#git clone git@github.com:nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
 
 # Giving execution rights to scripts
 chmod +x ~/personal/dotfiles/etc/bin/.local/scripts/*
@@ -162,19 +164,14 @@ chmod +x ~/personal/dotfiles/etc/bin/.local/scripts/*
 mkdir -p ~/.config/nvim
 mkdir -p ~/.config/aerospace
 mkdir -p ~/.config/alacritty
+mkdir -p ~/.claude
 
 # Stow everything else
 stow --dir="$HOME/config" --target="$HOME/.config/nvim" -S nvim
 stow --dir="$HOME/config" --target="$HOME/.config/aerospace" -S aerospace
 stow --dir="$HOME/config" --target="$HOME/.config/alacritty" -S alacritty
+stow --dir="$HOME/config" --target="$HOME/.claude" -S dotclaude
 
-
-echo ""
-echo "----- install colima -----"
-
-brew install colima
-brew services start colima
-colima start
 
 echo ""
 echo "----- rust -----"
