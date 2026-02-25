@@ -69,7 +69,7 @@ Read the existing CLAUDE.md. Check if these sections exist with correct format:
 ```
 ## Quality Gates
 
-Run in order after all steps complete. Commands are read directly from this section.
+Run before every `git push` via hooks. Commands read directly from this section.
 
 - **test**: `{actual command}` — on fail: stop
 - **typecheck**: `{actual command}` — on fail: stop
