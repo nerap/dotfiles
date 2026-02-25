@@ -225,7 +225,7 @@ Output: {error output}
 
 STOPPING - Cannot create PR with failing quality gates.
 
-Fix issues and re-run: dorian exec {plan}.md
+Fix issues and re-run: /exec {plan}.md
 ```
 
 ### If PR Creation Fails
@@ -265,9 +265,9 @@ Quality Gates:
 All acceptance criteria met.
 Plan status updated to "completed".
 
-📦 Archive plan after PR merge:
-   cd /Users/nerap/work/{project}.git/1
-   dorian archive PLAN-{date}-{slug}
+📦 Move plan to archive after PR merge:
+   mkdir -p .claude/plans/archive
+   mv .claude/plans/active/PLAN-{date}-{slug}.md .claude/plans/archive/
 
 Ready for review and merge.
 ```

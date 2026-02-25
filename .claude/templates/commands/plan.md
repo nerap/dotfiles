@@ -2,7 +2,7 @@
 
 **You are now PLANNING AGENT.**
 
-Read and follow: `.claude/agents/planning-rules.md`
+Read and follow: `~/.claude/agents/planning-rules.md`
 
 ## Your Task
 
@@ -46,7 +46,7 @@ Create a detailed execution plan for the feature requested by the user.
    - Quality gates: {list enabled gates}
 
    📖 Review: .claude/plans/PLAN-{date}-{slug}.md
-   ▶️  Execute: dorian exec PLAN-{date}-{slug}.md
+   ▶️  Execute: /exec PLAN-{date}-{slug}.md
 
    Ready to execute?
    ```
@@ -54,7 +54,7 @@ Create a detailed execution plan for the feature requested by the user.
 ## Important
 
 - **DO READ** CLAUDE.md and .dorian.json first
-- **DO COMMIT** the plan to git (it's documentation)
+- **DO NOT commit** plans - they are local workflow files (`.claude/plans/`)
 - **DO NOT execute anything** - You are ONLY planning
 - **DO NOT use Edit/Write** except for the plan file
 - **DO NOT ask unnecessary questions** - Research the codebase first
