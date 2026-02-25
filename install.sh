@@ -153,8 +153,7 @@ git clone git@github.com:nerap/tmux.git ~/config/tmux
 git clone git@github.com:nerap/zsh.git ~/config/zsh
 git clone git@github.com:nerap/aerospace.git ~/config/aerospace
 git clone git@github.com:nerap/alacritty.git ~/config/alacritty
-git clone git@github.com:nerap/dotclaude.git ~/config/dotclaude
-# Not used anymore
+# Not used anymore (dotclaude absorbed into dotfiles — see dotfiles/dotclaude/)
 #git clone git@github.com:nerap/qmk_firmware.git ~/personal/qmk_firmware --depth 1
 
 # Giving execution rights to scripts
@@ -170,7 +169,7 @@ mkdir -p ~/.claude
 stow --dir="$HOME/config" --target="$HOME/.config/nvim" -S nvim
 stow --dir="$HOME/config" --target="$HOME/.config/aerospace" -S aerospace
 stow --dir="$HOME/config" --target="$HOME/.config/alacritty" -S alacritty
-stow --dir="$HOME/config" --target="$HOME/.claude" -S dotclaude
+stow --dir="$HOME/personal/dotfiles" --target="$HOME/.claude" -S dotclaude
 
 
 echo ""

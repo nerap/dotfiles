@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "comment": "Project-specific quality gates - copy to project .claude/settings.local.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "tool == \"Bash\" && tool_input.command contains \"git commit\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "#!/bin/bash\necho '[Hook] Running quality gates...' >&2\n\n# Adjust paths and commands for your project\ncd apps/web || exit 1\n\n# Type check\necho '[Hook] Type checking...' >&2\ntsc --noEmit --skipLibCheck || { echo '[Hook] ❌ Type check failed' >&2; exit 1; }\n\n# Tests\necho '[Hook] Running tests...' >&2\nbun test || { echo '[Hook] ❌ Tests failed' >&2; exit 1; }\n\n# Lint\necho '[Hook] Linting...' >&2\nbun run check || { echo '[Hook] ⚠️  Lint warnings' >&2; }\n\necho '[Hook] ✓ Quality gates passed' >&2\ncat"
+          }
+        ],
+        "description": "Run quality gates before git commit"
+      }
+    ]
+  }
+}

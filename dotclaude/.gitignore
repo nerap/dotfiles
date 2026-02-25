@@ -1,0 +1,6 @@
+# Claude Code runtime files — not tracked in dotfiles
+todos.md
+history.jsonl
+*.backup
+cache/
+logs/

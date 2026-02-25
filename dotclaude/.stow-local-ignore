@@ -1,0 +1,14 @@
+# Git files
+\.git
+\.gitignore
+README.*
+LICENSE.*
+
+# Hooks go in settings.json, not stowed
+hooks
+
+# Templates are documentation, not stowed
+templates
+
+# Backup
+\.backup$

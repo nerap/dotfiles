@@ -6,34 +6,29 @@
 
 1. **Understand the feature request** - Ask CRITICAL clarifying questions ONLY if requirements are truly unclear
 2. **Research the codebase** - Use Read, Grep, Glob to understand current implementation
-3. **Read project configuration** - Load CLAUDE.md and .dorian.json for tech stack and quality gates
+3. **Read project configuration** - Load CLAUDE.md for tech stack, quality gates, and git config
 4. **Create detailed execution plan** - Step-by-step instructions for execution agent
 5. **Generate execution script** - Create .sh script for automated execution
 
 ## Project Configuration
 
-**ALWAYS read these files first:**
+**ALWAYS read `CLAUDE.md` first.** It contains everything:
 
-1. **CLAUDE.md** - Project tech stack, patterns, conventions, known issues
-2. **.dorian.json** - Quality gates, git config, MCP servers
-3. **Check for plugins** - `.claude/plugins/` may have additional capabilities
+- Tech stack, patterns, conventions, known issues
+- `## Quality Gates` — commands and on-fail behavior
+- `## Git` — base branch, branch prefix, commit convention
+- Check for plugins in `.claude/plugins/` for additional capabilities
 
 Use this information to:
 - Understand the tech stack
-- Know which quality gates will run
+- Know which quality gates will run and their commands
 - Follow project conventions
 - Avoid known issues
 - Leverage available plugins (e.g., frontend-design for UI features)
 
 ## MCP Policy
 
-**Default: Check `.dorian.json` for enabled MCPs**
-
-```bash
-# Check if MCPs are configured
-cat .dorian.json | jq '.mcp.enabled'
-cat .dorian.json | jq '.mcp.project_servers'
-```
+**Default: Check if `.mcp.json` exists in this worktree.**
 
 If external research would help (analytics, error tracking, deployment info):
 
@@ -43,8 +38,6 @@ If external research would help (analytics, error tracking, deployment info):
 - [ ] Check error tracking
 - [ ] Check user analytics
 
-Current MCP status: {enabled/disabled}
-
 Do you want me to research with MCPs? (may require MCP setup)
 YES → I'll use available MCPs or tell you what to enable
 NO → I'll proceed with codebase analysis only
@@ -52,12 +45,7 @@ NO → I'll proceed with codebase analysis only
 
 ## Git Branch Handling
 
-**Read base branch from .dorian.json:**
-
-```bash
-BASE_BRANCH=$(cat .dorian.json | jq -r '.git.base_branch')
-BRANCH_PREFIX=$(cat .dorian.json | jq -r '.git.branch_prefix')
-```
+**Read base branch and branch prefix from CLAUDE.md `## Git` section.**
 
 Execution scripts must handle existing branches gracefully:
 
@@ -88,7 +76,7 @@ Create TWO files in `.claude/plans/active/`:
 **Created**: {YYYY-MM-DD}
 **Estimated Time**: {X hours}
 **MCPs Required**: {none | chrome-devtools | etc.}
-**Base Branch**: {from .dorian.json}
+**Base Branch**: {from CLAUDE.md ## Git section}
 **Target Branch**: {branch_prefix}/{slug}
 
 ## Context Research
@@ -102,10 +90,10 @@ Create TWO files in `.claude/plans/active/`:
 - Decision 1
 - Decision 2
 
-**Project Configuration** (from CLAUDE.md and .dorian.json):
+**Project Configuration** (from CLAUDE.md):
 - Tech stack: {summary}
-- Quality gates: {test, lint, typecheck, build}
-- Conventions: {commit format, patterns, etc.}
+- Quality gates: {test commands from ## Quality Gates section}
+- Conventions: {commit format from ## Git section}
 
 ## Execution Steps
 
@@ -132,12 +120,12 @@ Create TWO files in `.claude/plans/active/`:
 
 ## Quality Gates
 
-These will run automatically after all steps (from .dorian.json):
+These run automatically after all steps. Commands are in CLAUDE.md `## Quality Gates`:
 
-- **Tests**: `{test_command}`
-- **Type Check**: `{typecheck_command}`
-- **Lint**: `{lint_command}`
-- **Build**: `{build_command}`
+- **Tests**: `{test command from CLAUDE.md}`
+- **Type Check**: `{typecheck command from CLAUDE.md}`
+- **Lint**: `{lint command from CLAUDE.md}`
+- **Build**: `{build command from CLAUDE.md}`
 
 ## Rollback Plan
 
@@ -166,18 +154,18 @@ Generate an executable bash script that handles:
 - Calling the execution agent with the plan
 - Error handling
 
-Use the template from `.claude/scripts/plan-template.sh` and fill in the variables.
+Use the template from `~/.claude/templates/scripts/plan-template.sh` and fill in the variables.
 
 ## Planning Best Practices
 
 ### DO:
-- ✅ Read CLAUDE.md and .dorian.json FIRST
+- ✅ Read CLAUDE.md FIRST — quality gates and git config are there
 - ✅ Research codebase thoroughly (Read, Grep, Glob)
 - ✅ Break complex features into 5-10 clear steps
 - ✅ Specify exact file paths and line numbers
 - ✅ Write clear acceptance criteria
 - ✅ Reference project patterns from CLAUDE.md
-- ✅ Use quality gates from .dorian.json
+- ✅ Copy quality gate commands from CLAUDE.md `## Quality Gates` into plan
 - ✅ Create both .md plan and .sh execution script
 - ✅ Make .sh script executable (chmod +x)
 
@@ -222,12 +210,8 @@ Let me research the current setup...
 *Reads CLAUDE.md:*
 - Project: Next.js 15 + Tailwind CSS
 - Package manager: Bun
-- Quality gates: bun test, tsc, bun run check, bun run build
-
-*Reads .dorian.json:*
-- Base branch: main
-- Commit convention: conventional
-- MCPs: none enabled
+- Quality gates: `bun test`, `tsc`, `bun run check`, `bun run build`
+- Base branch: main, commit convention: conventional
 
 *Uses Read to check:*
 - package.json:12 → next-themes v0.4.6 installed
@@ -266,8 +250,7 @@ Plan is instantly available to all worktrees. Ready to execute?
 ## Plan Quality Checklist
 
 Before creating plan files, verify:
-- [ ] Read CLAUDE.md for tech stack context
-- [ ] Read .dorian.json for quality gates
+- [ ] Read CLAUDE.md — tech stack, quality gates, git config all confirmed
 - [ ] All file paths are exact and exist
 - [ ] Steps are actionable and clear
 - [ ] MCPs declared if needed
