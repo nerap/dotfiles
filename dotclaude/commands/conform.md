@@ -121,11 +121,11 @@ If either source file does not exist, report it as a warning but continue.
 
 Check if `.claude/settings.local.json` already exists.
 
-**If it exists**: read it, find the `hooks` key, update only the PreToolUse hook for `git commit`. Leave all other settings (permissions, other hooks) untouched.
+**If it exists**: read it, find the `hooks` key, update only the PreToolUse hook for `git push`. Leave all other settings (permissions, other hooks) untouched.
 
 **If it does not exist**: create it with this structure.
 
-The hook runs all quality gates before every `git commit`. Use the commands detected in step 2.
+The hook runs all quality gates before every `git push`. Fires on push, not commit — this lets you commit freely and incrementally; gates only block when you're actually shipping.
 
 For a bun TypeScript project with `bun test`, `tsc --noEmit`, `bun run lint`, `bun run build`, the file should look like:
 
@@ -138,7 +138,7 @@ For a bun TypeScript project with `bun test`, `tsc --noEmit`, `bun run lint`, `b
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\nif echo \"$CLAUDE_TOOL_INPUT_COMMAND\" | grep -qE 'git commit'; then\n  echo '🔍 Running quality gates...'\n  bun test || { echo '❌ Tests failed'; exit 1; }\n  tsc --noEmit || { echo '❌ Type check failed'; exit 1; }\n  bun run lint || echo '⚠️  Lint warnings (non-blocking)'\n  bun run build || { echo '❌ Build failed'; exit 1; }\n  echo '✅ All quality gates passed'\nfi"
+            "command": "#!/bin/bash\nif echo \"$CLAUDE_TOOL_INPUT_COMMAND\" | grep -qE 'git push'; then\n  echo '🔍 Running quality gates before push...'\n  bun test || { echo '❌ Tests failed'; exit 1; }\n  tsc --noEmit || { echo '❌ Type check failed'; exit 1; }\n  bun run lint || echo '⚠️  Lint warnings (non-blocking)'\n  bun run build || { echo '❌ Build failed'; exit 1; }\n  echo '✅ All quality gates passed'\nfi"
           }
         ]
       }
@@ -178,7 +178,7 @@ Scripts:
   ✓ .claude/scripts/plan-template.sh
 
 Hooks (.claude/settings.local.json):
-  ✓ PreToolUse — git commit triggers:
+  ✓ PreToolUse — git push triggers:
       test:       {command}
       typecheck:  {command}
       lint:       {command} (warn only)

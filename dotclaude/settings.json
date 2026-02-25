@@ -68,10 +68,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "#!/bin/bash\necho '[Hook] Review changes before push...' >&2\necho '[Hook] Press Enter to continue or Ctrl+C to abort...' >&2\nread -r"
+            "command": "#!/bin/bash\n# Show what's about to be pushed — no blocking, safe for automation\nbranch=$(git branch --show-current 2>/dev/null || echo 'unknown')\ncount=$(git log origin/$branch..HEAD --oneline 2>/dev/null | wc -l | tr -d ' ')\nif [ \"$count\" -gt 0 ]; then\n  echo \"[Hook] Pushing $count commit(s) on $branch:\" >&2\n  git log origin/$branch..HEAD --oneline 2>/dev/null >&2\nfi"
           }
         ],
-        "description": "Pause before git push to review changes"
+        "description": "Show commits about to be pushed (non-blocking)"
       }
     ],
     "PostToolUse": [
@@ -94,16 +94,6 @@
           }
         ],
         "description": "Auto-format JS/TS with Prettier + warn on console.log"
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "#!/bin/bash\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  project_root=$(dirname \"$file_path\")\n  while [ \"$project_root\" != \"/\" ] && [ ! -f \"$project_root/package.json\" ]; do\n    project_root=$(dirname \"$project_root\")\n  done\n  if [ -f \"$project_root/tsconfig.json\" ]; then\n    cd \"$project_root\" && npx tsc --noEmit --pretty false 2>&1 | grep \"$file_path\" | head -10 >&2 || true\n  fi\nfi\necho \"$input\""
-          }
-        ],
-        "description": "TypeScript check after editing .ts/.tsx files"
       }
     ],
     "Stop": [

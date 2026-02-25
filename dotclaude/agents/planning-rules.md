@@ -199,9 +199,33 @@ After creating the plan files:
 
 Plans are LOCAL workflow files (not committed to git). They're instantly available to all worktrees via the shared `.claude/` directory.
 
+## After Plan Creation: Ask How to Proceed
+
+**Always ask the user after presenting the plan:**
+
+```
+✅ Plan created: PLAN-{date}-{slug}
+
+How would you like to proceed?
+
+A) Execute now in this session (recommended)
+   You stay in the loop. I execute step by step, you see each result.
+   Natural checkpoints — stop me at any point.
+
+B) Save for later automated execution
+   Use for repetitive/mechanical tasks where you don't need to watch.
+   Run: bash .claude/plans/active/PLAN-{date}-{slug}.sh
+```
+
+**If user chooses A:** Immediately switch to executor mode in this session.
+Read `~/.claude/agents/execution-rules.md` and begin executing the plan you just created.
+You already have full context — no handoff needed.
+
+**If user chooses B:** The .sh script is ready. Done.
+
 ## Example Planning Session
 
-**User:** `/plan Add dark mode support`
+**User:** `/planning Add dark mode support`
 
 **You:**
 ```
@@ -210,7 +234,7 @@ Let me research the current setup...
 *Reads CLAUDE.md:*
 - Project: Next.js 15 + Tailwind CSS
 - Package manager: Bun
-- Quality gates: `bun test`, `tsc`, `bun run check`, `bun run build`
+- Quality gates: run on git push
 - Base branch: main, commit convention: conventional
 
 *Uses Read to check:*
@@ -218,25 +242,19 @@ Let me research the current setup...
 - tailwind.config.ts:1 → No darkMode config yet
 - app/[locale]/providers.tsx:15 → Provider structure
 
-This feature does not require external research. Proceeding with plan...
+No MCP research needed. Creating plan...
 
 *Creates:*
-- .claude/plans/active/PLAN-20260114-dark-mode.md (5 steps, 1.5 hours)
-- .claude/plans/active/PLAN-20260114-dark-mode.sh (executable script)
+- .claude/plans/active/PLAN-20260114-dark-mode.md (5 steps)
+- .claude/plans/active/PLAN-20260114-dark-mode.sh (automated option)
 
 ✅ Plan created: PLAN-20260114-dark-mode
 
-📋 Summary:
-- 5 steps
-- Estimated: 1.5 hours
-- MCPs needed: none
-- Branch: feat/dark-mode
-- Quality gates: all enabled
+Summary: 5 steps · feat/dark-mode · MCPs: none
 
-📖 Review: .claude/plans/active/PLAN-20260114-dark-mode.md
-▶️  Execute: ./.claude/plans/active/PLAN-20260114-dark-mode.sh
-
-Plan is instantly available to all worktrees. Ready to execute?
+How would you like to proceed?
+A) Execute now in this session (recommended)
+B) Save for automated execution later
 ```
 
 ## When User Says "This is Wrong"
@@ -279,13 +297,16 @@ If `.claude/plugins/frontend-design/` exists and you're planning UI features:
 
 ## Remember
 
-**You are NOT executing. You are PLANNING.**
+**You are PLANNING first, then ask how to proceed.**
 
 Your output is:
 1. A detailed markdown plan file (.md)
-2. An executable bash script (.sh)
+2. An executable bash script (.sh) — for automated execution only
 3. Both files stored locally (not committed to git)
-4. Instantly available to all worktrees
+4. A clear A/B choice for the user: execute now vs. save for later
+
+**Default is A (same-session execution).** It's faster, safer, and keeps context.
+Use B (automated .sh) only for repetitive mechanical tasks the user doesn't need to watch.
 
 If your plan is vague, execution will fail. Be specific, be clear, be complete.
 

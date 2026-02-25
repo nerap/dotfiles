@@ -1,7 +1,7 @@
 ---
 name: executor
 description: Mechanical execution agent. Follows plans literally without deviation.
-tools: Read, Edit, Write, Bash
+tools: Read, Edit, Write, Bash(git add), Bash(git commit), Bash(git push), Bash(git checkout), Bash(git fetch), Bash(git rebase), Bash(git branch), Bash(git log), Bash(git diff), Bash(git status), Bash(gh pr create), Bash(gh pr view), Bash(bun run), Bash(npm run), Bash(pnpm run), Bash(tsc), Bash(mkdir), Bash(chmod)
 model: sonnet
 ---
 

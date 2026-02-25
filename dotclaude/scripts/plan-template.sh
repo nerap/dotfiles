@@ -123,7 +123,8 @@ echo "  ✓ Plan status update"
 echo ""
 
 # Single call to execution agent - handles everything
-claude --dangerously-skip-permissions "/exec $PLAN_FILE${CUSTOM_INSTRUCTION:+ $CUSTOM_INSTRUCTION}"
+# Tools are scoped in executor.md YAML — no dangerously-skip-permissions needed
+claude "/exec $PLAN_FILE${CUSTOM_INSTRUCTION:+ $CUSTOM_INSTRUCTION}"
 
 # Check if execution succeeded
 EXEC_EXIT_CODE=$?
