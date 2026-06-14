@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "sonnet",
   "permissions": {
     "allow": [
       "Bash(git:*)",
@@ -39,30 +38,11 @@
       "Bash(switch-workspace:*)",
       "Bash(tmux-sessionizer:*)",
       "Bash(stow:*)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "hooks": {
     "PreToolUse": [
-      {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm run dev|pnpm( run)? dev|yarn dev|bun run dev)\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "#!/bin/bash\necho '[Hook] BLOCKED: Dev server must run in tmux for log access' >&2\necho '[Hook] Use: tmux new-session -d -s dev \"bun run dev\"' >&2\necho '[Hook] Then: tmux attach -t dev' >&2\nexit 1"
-          }
-        ],
-        "description": "Block dev servers outside tmux"
-      },
-      {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(npm (install|test)|pnpm (install|test)|yarn (install|test)|bun (install|test)|cargo build|make|docker|pytest|vitest|playwright)\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "#!/bin/bash\nif [ -z \"$TMUX\" ]; then\n  echo '[Hook] Consider running in tmux for session persistence' >&2\n  echo '[Hook] tmux new -s dev  |  tmux attach -t dev' >&2\nfi"
-          }
-        ],
-        "description": "Reminder to use tmux for long-running commands"
-      },
       {
         "matcher": "tool == \"Bash\" && tool_input.command matches \"git push\"",
         "hooks": [
@@ -70,8 +50,7 @@
             "type": "command",
             "command": "#!/bin/bash\n# Show what's about to be pushed — no blocking, safe for automation\nbranch=$(git branch --show-current 2>/dev/null || echo 'unknown')\ncount=$(git log origin/$branch..HEAD --oneline 2>/dev/null | wc -l | tr -d ' ')\nif [ \"$count\" -gt 0 ]; then\n  echo \"[Hook] Pushing $count commit(s) on $branch:\" >&2\n  git log origin/$branch..HEAD --oneline 2>/dev/null >&2\nfi"
           }
-        ],
-        "description": "Show commits about to be pushed (non-blocking)"
+        ]
       }
     ],
     "PostToolUse": [
@@ -82,31 +61,28 @@
             "type": "command",
             "command": "#!/bin/bash\ninput=$(cat)\npr_url=$(echo \"$input\" | jq -r '.tool_output.output // \"\"' | grep -oE 'https://github.com/[^/]+/[^/]+/pull/[0-9]+' || true)\nif [ -n \"$pr_url\" ]; then\n  pr_num=$(echo \"$pr_url\" | sed -E 's|.*/pull/([0-9]+)|\\1|')\n  echo \"[Hook] PR created: $pr_url\" >&2\n  echo \"[Hook] Review: gh pr review $pr_num\" >&2\nfi\necho \"$input\""
           }
-        ],
-        "description": "Log PR URL after creation"
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "#!/bin/bash\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  if command -v prettier >/dev/null 2>&1; then\n    prettier --write \"$file_path\" 2>&1 | head -3 >&2\n  fi\n  console_logs=$(grep -n 'console\\.log' \"$file_path\" 2>/dev/null || true)\n  if [ -n \"$console_logs\" ]; then\n    echo \"[Hook] WARNING: console.log in $file_path\" >&2\n    echo \"$console_logs\" | head -5 >&2\n  fi\nfi\necho \"$input\""
-          }
-        ],
-        "description": "Auto-format JS/TS with Prettier + warn on console.log"
+        ]
       }
     ],
-    "Stop": [
+    "Notification": [
       {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "#!/bin/bash\nif git rev-parse --git-dir > /dev/null 2>&1; then\n  modified=$(git diff --name-only HEAD 2>/dev/null | grep -E '\\.(ts|tsx|js|jsx)$' || true)\n  if [ -n \"$modified\" ]; then\n    while IFS= read -r file; do\n      if [ -f \"$file\" ] && grep -q 'console\\.log' \"$file\" 2>/dev/null; then\n        echo \"[Hook] WARNING: console.log found in $file\" >&2\n      fi\n    done <<< \"$modified\"\n  fi\nfi"
-          }
-        ],
-        "description": "Final console.log audit on session end"
+        "matcher": "permission_prompt",
+        "hooks": [ { "type": "command", "command": "/Users/nerap/.claude/scripts/notify-tmux.sh permission" } ]
+      },
+      {
+        "matcher": "idle_prompt",
+        "hooks": [ { "type": "command", "command": "/Users/nerap/.claude/scripts/notify-tmux.sh idle" } ]
       }
     ]
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/Users/nerap/.claude/scripts/statusline.sh"
+  },
+  "enabledPlugins": {
+    "posthog@claude-plugins-official": true
+  },
+  "effortLevel": "medium",
+  "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true
 }
