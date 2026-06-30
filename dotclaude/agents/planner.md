@@ -50,6 +50,20 @@ Use `feat/` prefix for feature branches:
 
 ## Planning Process
 
+### 0. PRD Context (If Available)
+
+If a PRD file path was provided — either from an automatic `/prd` transition or via `/planning PRD-{date}-{slug}.md` — do this before anything else:
+
+1. **Read the PRD file** using the Read tool (`~/.claude/prds/{filename}`).
+2. **Extract all sections**: Problem Statement, Target Users, User Stories + Acceptance Criteria, Out of Scope, Open Questions.
+3. **Resolve Open Questions first** — if any remain, present them to the user before proceeding. Do not plan around unresolved ambiguity.
+4. **Map user stories to plan steps** — each User Story becomes one or more plan steps. Each step is a **vertical slice**: a thin cut through all required layers (DB migration, edge function, frontend component, tests) for that story. Do NOT create horizontal slices (e.g., "all DB changes" as one step).
+5. **Carry forward acceptance criteria** — each story's acceptance criteria become the `**Acceptance Criteria:**` items in the corresponding plan step.
+6. **Skip "### 1. Requirements Analysis"** — the PRD already provides this. Go directly to "### 2. Architecture Review" to determine HOW to implement what the PRD defines.
+7. **Respect Out of Scope** — do not include anything listed there in the plan.
+
+> The PRD tells you **what** to build. You figure out **how**.
+
 ### 1. Requirements Analysis
 - Understand the feature request completely
 - Ask clarifying questions if needed
@@ -89,6 +103,7 @@ File: `.claude/plans/active/PLAN-{YYYYMMDD}-{slug}.md`
 **MCPs Required**: {none | chrome-devtools | etc.}
 **Base Branch**: {from git config}
 **Target Branch**: feat/{slug}
+**PRD**: {path to PRD file, e.g. ~/.claude/prds/PRD-20260318-slug.md, or "none"}
 
 ## Context Research
 

@@ -1,0 +1,40 @@
+#!/usr/bin/env zsh
+
+# Keep Mac awake for remote SSH access (screen can be locked)
+# Usage:
+#   awake        — keep awake indefinitely
+#   awake 4h     — keep awake for 4 hours
+#   awake stop   — kill all running caffeinate processes
+
+case "${1}" in
+  stop)
+    pkill caffeinate 2>/dev/null && echo "Stopped all caffeinate processes." || echo "No caffeinate process running."
+    ;;
+  "")
+    echo "Keeping Mac awake indefinitely (pid $$). Run 'awake stop' to cancel."
+    caffeinate -s -d &
+    echo "caffeinate running in background (pid $!)."
+    ;;
+  *)
+    # Parse duration: supports 1h, 2h, 30m, etc.
+    local duration="${1}"
+    local seconds=0
+    if [[ "$duration" =~ ^([0-9]+)h$ ]]; then
+      seconds=$(( ${match[1]} * 3600 ))
+    elif [[ "$duration" =~ ^([0-9]+)m$ ]]; then
+      seconds=$(( ${match[1]} * 60 ))
+    elif [[ "$duration" =~ ^([0-9]+)$ ]]; then
+      seconds="${match[1]}"
+    else
+      echo "Usage: awake [duration|stop]"
+      echo "  awake        keep awake indefinitely"
+      echo "  awake 4h     keep awake for 4 hours"
+      echo "  awake 30m    keep awake for 30 minutes"
+      echo "  awake stop   kill caffeinate"
+      return 1
+    fi
+    echo "Keeping Mac awake for ${duration} (${seconds}s)."
+    caffeinate -s -d -t "$seconds" &
+    echo "caffeinate running in background (pid $!)."
+    ;;
+esac

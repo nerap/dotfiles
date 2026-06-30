@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# voice-transcribe — Transcribe audio file with whisper.cpp, optionally reformat as prompt
+# Usage: voice-transcribe <audio-file> [--reformat]
+# Called by Termux-side voice-to-claude script
+
+set -euo pipefail
+
+# Ensure Homebrew binaries are in PATH (needed for non-interactive SSH)
+export PATH="/opt/homebrew/bin:$PATH"
+
+WHISPER_MODEL="$HOME/.local/share/whisper-models/ggml-base.bin"
+AUDIO_FILE="${1:-}"
+REFORMAT="${2:-}"
+
+if [ -z "$AUDIO_FILE" ]; then
+  echo "Usage: voice-transcribe <audio-file> [--reformat]" >&2
+  exit 1
+fi
+
+if [ ! -f "$AUDIO_FILE" ]; then
+  echo "Error: file not found: $AUDIO_FILE" >&2
+  exit 1
+fi
+
+# Convert to proper WAV format for whisper (16kHz, mono, PCM s16le)
+CONVERTED="/tmp/voice_converted_$$.wav"
+ffmpeg -y -i "$AUDIO_FILE" -ar 16000 -ac 1 -c:a pcm_s16le "$CONVERTED" 2>/dev/null
+
+# Transcribe with whisper-cli (suppress model loading logs)
+TRANSCRIPT=$(whisper-cli \
+  -m "$WHISPER_MODEL" \
+  -f "$CONVERTED" \
+  -l en \
+  -nt \
+  2>/dev/null \
+  | sed '/^$/d' \
+  | sed 's/^\[.*\] //' \
+  | tr '\n' ' ' \
+  | sed 's/  */ /g; s/^ *//; s/ *$//')
+
+rm -f "$CONVERTED"
+
+if [ -z "$TRANSCRIPT" ]; then
+  echo "Error: transcription returned empty" >&2
+  exit 1
+fi
+
+if [ "$REFORMAT" = "--reformat" ]; then
+  # Use claude CLI to clean up spoken text into a proper prompt
+  REFORMATTED=$(echo "$TRANSCRIPT" | claude --print -p \
+    "Reformat this spoken text into a clear, concise prompt for a coding assistant. Fix grammar, remove filler words, keep the original intent. Output ONLY the reformatted text, nothing else:")
+  echo "$REFORMATTED"
+else
+  echo "$TRANSCRIPT"
+fi

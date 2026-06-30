@@ -41,6 +41,7 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -67,11 +68,21 @@
     "Notification": [
       {
         "matcher": "permission_prompt",
-        "hooks": [ { "type": "command", "command": "/Users/nerap/.claude/scripts/notify-tmux.sh permission" } ]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/nerap/.claude/scripts/notify-tmux.sh permission"
+          }
+        ]
       },
       {
         "matcher": "idle_prompt",
-        "hooks": [ { "type": "command", "command": "/Users/nerap/.claude/scripts/notify-tmux.sh idle" } ]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/nerap/.claude/scripts/notify-tmux.sh idle"
+          }
+        ]
       }
     ]
   },

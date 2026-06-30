@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# voice — Record from Mac mic, transcribe with whisper, copy to clipboard
+# Usage: voice
+# Press Enter to stop recording.
+
+set -euo pipefail
+export PATH="/opt/homebrew/bin:$PATH"
+
+WHISPER_MODEL="$HOME/.local/share/whisper-models/ggml-base.bin"
+TMPFILE="/tmp/voice_$$.wav"
+
+echo "Recording... press Enter to stop."
+
+# Record from default Mac mic (16kHz mono WAV)
+ffmpeg -y -f avfoundation -i ":default" -ar 16000 -ac 1 -c:a pcm_s16le "$TMPFILE" 2>/dev/null &
+FFMPEG_PID=$!
+
+read -r _
+kill "$FFMPEG_PID" 2>/dev/null
+wait "$FFMPEG_PID" 2>/dev/null || true
+
+if [ ! -s "$TMPFILE" ]; then
+  echo "Error: no audio recorded" >&2
+  exit 1
+fi
+
+echo "Transcribing..."
+
+TRANSCRIPT=$(whisper-cli \
+  -m "$WHISPER_MODEL" \
+  -f "$TMPFILE" \
+  -l en \
+  -nt \
+  2>/dev/null \
+  | sed '/^$/d' \
+  | sed 's/^\[.*\] //' \
+  | tr '\n' ' ' \
+  | sed 's/  */ /g; s/^ *//; s/ *$//')
+
+rm -f "$TMPFILE"
+
+if [ -z "$TRANSCRIPT" ]; then
+  echo "Error: empty transcription" >&2
+  exit 1
+fi
+
+echo "$TRANSCRIPT"
+echo "$TRANSCRIPT" | pbcopy
+echo "-- Copied to clipboard --"

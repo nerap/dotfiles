@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# voice-to-claude — Record voice on Termux, transcribe on Mac, copy to clipboard
+#
+# Run this LOCALLY on Termux (not over SSH).
+# Requires: termux-api package (pkg install termux-api)
+#
+# Usage: voice-to-claude [mac-ssh-host]
+#
+# Setup on Termux:
+#   1. pkg install termux-api openssh
+#   2. Install Termux:API app from F-Droid
+#   3. Set up SSH key: ssh-keygen && ssh-copy-id user@mac-ip
+#   4. Add to ~/.ssh/config:
+#        Host mac
+#          HostName <your-mac-ip>
+#          User nerap
+#   5. Copy this script: scp mac:~/bin/.local/scripts/voice-to-claude ~/bin/
+#   6. chmod +x ~/bin/voice-to-claude
+
+set -euo pipefail
+
+MAC_HOST="${1:-mac}"
+TMPFILE="$HOME/voice_$$.wav"
+rm -f "$TMPFILE"
+
+echo "Recording... tap Enter when done."
+
+termux-microphone-record -f "$TMPFILE" -e "wav" -b 16 -r 16000 -c 1
+read -r _
+termux-microphone-record -q
+sleep 1
+
+if [ ! -s "$TMPFILE" ]; then
+  echo "Error: no audio recorded" >&2
+  exit 1
+fi
+
+echo "Transcribing..."
+scp -q "$TMPFILE" "$MAC_HOST:/tmp/voice_remote.wav"
+rm -f "$TMPFILE"
+
+PROMPT=$(ssh "$MAC_HOST" '~/bin/.local/scripts/voice-transcribe /tmp/voice_remote.wav 2>&1')
+
+if [ -z "$PROMPT" ]; then
+  echo "Error: empty transcription" >&2
+  exit 1
+fi
+
+echo "$PROMPT"
+echo "$PROMPT" | termux-clipboard-set
+echo "-- Copied to clipboard --"
