@@ -1,11 +1,11 @@
 #!/bin/bash
-# Switch to a specific workspace (1-4) within current repo
-# Usage: switch-workspace <1|2|3|4>
+# Switch to a specific workspace (1-8) within current repo
+# Usage: switch-workspace <1|2|3|4|5|6|7|8>
 
 WORKSPACE_NUM="$1"
 
-if [ -z "$WORKSPACE_NUM" ] || ! [[ "$WORKSPACE_NUM" =~ ^[1-4]$ ]]; then
-  echo "Usage: switch-workspace <1|2|3|4>"
+if [ -z "$WORKSPACE_NUM" ] || ! [[ "$WORKSPACE_NUM" =~ ^[1-8]$ ]]; then
+  echo "Usage: switch-workspace <1|2|3|4|5|6|7|8>"
   exit 1
 fi
 

@@ -52,7 +52,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Repository: $REPO_URL"
 echo "Category:   $CATEGORY"
 echo "Target:     $BARE_REPO"
-echo "Workspaces: 4"
+echo "Workspaces: 8"
 echo ""
 
 # Create target directory if it doesn't exist
@@ -136,22 +136,22 @@ echo "🤖 Setting up shared Claude Code configuration..."
 mkdir -p "$BARE_REPO/.claude"
 echo ""
 
-# Create 4 workspaces as detached HEAD
+# Create 8 workspaces as detached HEAD
 # This allows each workspace to independently checkout any branch
-echo "📁 Creating 4 workspaces..."
-for i in 1 2 3 4; do
+echo "📁 Creating 8 workspaces..."
+for i in 1 2 3 4 5 6 7 8; do
   WORKSPACE_PATH="$BARE_REPO/$i"
 
   # For init repos with -i flag: all workspaces start from main (detached HEAD)
   # Workspace 1: stays on main (planning/exploration only)
-  # Workspaces 2-4: checkout feature/* branches as needed
+  # Workspaces 2-8: checkout feature/* branches as needed
   if [ "$IS_INIT_REPO" = true ]; then
     BRANCH_SHA=$(git rev-parse main)
-    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at main, detached HEAD)"
+    echo "  [$i/8] Creating workspace: $WORKSPACE_PATH (at main, detached HEAD)"
     git worktree add --detach "$WORKSPACE_PATH" "$BRANCH_SHA"
   else
     # Standard flow: all workspaces from default branch (detached HEAD)
-    echo "  [$i/4] Creating workspace: $WORKSPACE_PATH (at $DEFAULT_BRANCH, detached HEAD)"
+    echo "  [$i/8] Creating workspace: $WORKSPACE_PATH (at $DEFAULT_BRANCH, detached HEAD)"
     git worktree add --detach "$WORKSPACE_PATH" "$COMMIT_SHA"
   fi
 
@@ -167,10 +167,10 @@ echo ""
 echo "🔗 Symlinking Claude Code configuration to all workspaces..."
 # Create symlinks so all worktrees share the same .claude config
 cd "$BARE_REPO"
-for i in 1 2 3 4; do
+for i in 1 2 3 4 5 6 7 8; do
   WORKSPACE_PATH="$BARE_REPO/$i"
   ln -sf "$BARE_REPO/.claude" "$WORKSPACE_PATH/.claude"
-  echo "  [$i/4] Linked .claude to workspace $i"
+  echo "  [$i/8] Linked .claude to workspace $i"
 done
 
 echo ""
@@ -289,6 +289,10 @@ Switch between workspaces using tmux keybindings:
 - **Ctrl+j** → Workspace 2 (feature dev)
 - **Ctrl+k** → Workspace 3 (feature dev)
 - **Ctrl+l** → Workspace 4 (feature dev)
+- **Ctrl+n** → Workspace 5 (feature dev)
+- **Ctrl+m** → Workspace 6 (feature dev)
+- **Ctrl+,** → Workspace 7 (feature dev)
+- **Ctrl+.** → Workspace 8 (feature dev)
 
 Or use the command:
 ```bash
@@ -378,13 +382,13 @@ echo ""
 echo "🖥️  Creating tmux sessions..."
 
 # Create 4 tmux sessions with consistent layout
-for i in 1 2 3 4; do
+for i in 1 2 3 4 5 6 7 8; do
   WORKSPACE_PATH="$BARE_REPO/$i"
   # Sanitize repo name for tmux (replace dots with underscores)
   SAFE_REPO_NAME=$(echo "$REPO_NAME" | tr . _)
   SESSION_NAME="${SAFE_REPO_NAME}_${i}"
 
-  echo "  [$i/4] Creating session: $SESSION_NAME"
+  echo "  [$i/8] Creating session: $SESSION_NAME"
 
   # Create detached session with window 1
   tmux new-session -ds "$SESSION_NAME" -c "$WORKSPACE_PATH"
@@ -415,6 +419,10 @@ echo "  Ctrl+h → Workspace 1 (${SAFE_REPO_NAME}_1)"
 echo "  Ctrl+j → Workspace 2 (${SAFE_REPO_NAME}_2)"
 echo "  Ctrl+k → Workspace 3 (${SAFE_REPO_NAME}_3)"
 echo "  Ctrl+l → Workspace 4 (${SAFE_REPO_NAME}_4)"
+echo "  Ctrl+n → Workspace 5 (${SAFE_REPO_NAME}_5)"
+echo "  Ctrl+m → Workspace 6 (${SAFE_REPO_NAME}_6)"
+echo "  Ctrl+, → Workspace 7 (${SAFE_REPO_NAME}_7)"
+echo "  Ctrl+. → Workspace 8 (${SAFE_REPO_NAME}_8)"
 echo ""
 echo "📂 Workspace Locations:"
 if [ "$IS_INIT_REPO" = true ]; then
@@ -431,7 +439,7 @@ if [ "$IS_INIT_REPO" = true ]; then
   echo ""
   echo "📝 Documentation: $BARE_REPO/.worktree/SETUP.md"
 else
-  for i in 1 2 3 4; do
+  for i in 1 2 3 4 5 6 7 8; do
     echo "  Workspace $i: $BARE_REPO/$i (from $DEFAULT_BRANCH, detached HEAD)"
   done
 fi
@@ -439,9 +447,9 @@ echo ""
 echo "💡 Recommended Workflow:"
 if [ "$IS_INIT_REPO" = true ]; then
   echo "  Workspace 1: Planning only (protected, cannot commit to main)"
-  echo "  Workspaces 2-4: Feature development"
+  echo "  Workspaces 2-8: Feature development"
   echo ""
-  echo "  Create features in workspaces 2-4:"
+  echo "  Create features in workspaces 2-8:"
   echo "    cd 2/ && git checkout -b feature/my-feature main"
   echo "    cd 3/ && git checkout -b feature/another main"
 else
