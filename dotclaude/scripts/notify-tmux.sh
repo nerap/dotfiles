@@ -20,6 +20,15 @@ label=$(echo "$cwd" | sed -nE 's|.*/([^/]+)\.git/([0-9]+)$|\1 \2|p')
 icon="🔔"; [ "$kind" = "idle" ] && icon="✅"
 [ -n "$TMUX_PANE" ] && tmux display-message -t "$TMUX_PANE" "$icon [$label] $msg" 2>/dev/null
 
+# Record state for the fleet dashboard (fleet-card reads these).
+# Key mirrors the tmux session name: ".../prsnl_app.git/3" -> "prsnl_app_3".
+fkey=$(echo "$cwd" | sed -nE 's|.*/([^/]+)\.git/([0-9]+)$|\1_\2|p')
+if [ -n "$fkey" ]; then
+  fstate="idle"; [ "$kind" = "permission" ] && fstate="waiting"
+  mkdir -p "$HOME/.claude/fleet"
+  printf '%s %s\n' "$fstate" "$(date +%s)" > "$HOME/.claude/fleet/$fkey.status"
+fi
+
 if [ "$kind" = "permission" ]; then
   osascript -e "display notification \"$msg\" with title \"Claude · $label\"" 2>/dev/null
 fi

@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# fleet-card <bare-repo-path> <n> — live status card for worktree <n> of a
+# bare-repo workspace. Used as the per-pane process inside fleet-dashboard.
+#
+# Shows, for worktree <n> (session <repo>_<n>):
+#   - the nav key that jumps to it (H J K L / N M , .)
+#   - the checked-out branch
+#   - the Claude status: WORKING / WAITING FOR INPUT / IDLE / NO CLAUDE
+#   - a proportional minimap of window 1's pane layout, filling the card, with
+#     each cell coloured by what it holds:
+#       W = Claude working   ! = Claude waiting for input   C = Claude idle
+#       V = nvim             · = shell/other
+#     so the split ratio and every Claude's individual status are visible.
+#
+# Claude panes are detected by their process title (Claude Code sets it to its
+# version, e.g. "2.1.206"); their state comes from a live pane capture.
+
+bare="${1:?usage: fleet-card <bare-repo-path> <n>}"
+n="${2:?usage: fleet-card <bare-repo-path> <n>}"
+repo=$(basename "$bare" .git | tr . _)
+session="${repo}_${n}"
+wt="$bare/$n"
+fleetdir="$HOME/.claude/fleet"
+
+keys=(_ H J K L N M , .)
+key="${keys[$n]}"
+
+esc=$'\033'
+reset="${esc}[0m"; bold="${esc}[1m"; dim="${esc}[2m"
+red="${esc}[31m"; grn="${esc}[32m"; yel="${esc}[33m"; cyn="${esc}[36m"
+gry="${esc}[90m"; blu="${esc}[34m"
+bgr="${esc}[30;42m"; byl="${esc}[30;43m"; brd="${esc}[37;41m"; bgy="${esc}[30;100m"
+# bright foregrounds for the status squares
+sq_w="${esc}[93m"; sq_wait="${esc}[91m"; sq_i="${esc}[92m"; sq_v="${esc}[94m"
+
+trap 'printf "%s" "${esc}[?25h"' EXIT
+
+# A working Claude shows a spinner with a live timer/token counter (e.g.
+# "✽ Baking… (1m 38s · ↓ 5.3k tokens)") and/or "Running…"; older builds add
+# "esc to interrupt". None of these appear when idle.
+WORK_MARK='esc to interrupt|Running…|\([0-9]+m? ?[0-9]*s ·|[↑↓] [0-9.,]+k? tokens'
+WAIT_MARK='Do you want to|Would you like to proceed|❯ +1\.| 1\. Yes'
+
+# colour one minimap row: Claude panes are a square tinted by live status,
+# nvim/shell get their own tint, borders are dimmed so the squares stand out.
+print_grid_row() {
+  local row="$1" i ch out=""
+  for ((i=0; i<${#row}; i++)); do
+    ch="${row:i:1}"
+    case "$ch" in
+      W)   out+="${sq_w}█${reset}" ;;
+      '!') out+="${sq_wait}█${reset}" ;;
+      C)   out+="${sq_i}█${reset}" ;;
+      V)   out+="${sq_v}█${reset}" ;;
+      ·)   out+="${gry}░${reset}" ;;
+      ' ') out+=' ' ;;
+      *)   out+="${dim}${ch}${reset}" ;;
+    esac
+  done
+  printf '│%s│\n' "$out"
+}
+
+# proportional minimap of one window, sized Cw x Ch. args: session win Cw Ch "pstates"
+draw_map() {
+  local sess="$1" win="$2" Cw="$3" Ch="$4" pstates="$5"
+  local ww wh
+  read -r ww wh < <(tmux display-message -pt "$sess:$win" '#{window_width} #{window_height}' 2>/dev/null)
+  [ -z "${ww:-}" ] && return
+  local r cc grid=() blank
+  blank=$(printf '%*s' "$Cw" '')
+  for ((r=0; r<Ch; r++)); do grid[r]="$blank"; done
+  local pid pl pt pw ph label x0 x1 y0 y1 row ch
+  while read -r pid pl pt pw ph; do
+    case " $pstates " in
+      *" $pid=W "*)  label='W' ;;
+      *" $pid=! "*)  label='!' ;;
+      *" $pid=C "*)  label='C' ;;
+      *" $pid=V "*)  label='V' ;;
+      *)             label='·' ;;
+    esac
+    x0=$(( pl*Cw/ww )); x1=$(( (pl+pw)*Cw/ww ))
+    y0=$(( pt*Ch/wh )); y1=$(( (pt+ph)*Ch/wh ))
+    [ "$x1" -le "$x0" ] && x1=$((x0+1)); [ "$x1" -gt "$Cw" ] && x1=$Cw
+    [ "$y1" -le "$y0" ] && y1=$((y0+1)); [ "$y1" -gt "$Ch" ] && y1=$Ch
+    # fill the pane rect with its label, framed so adjacent panes stay distinct
+    for ((r=y0; r<y1; r++)); do
+      row="${grid[r]}"
+      for ((cc=x0; cc<x1; cc++)); do
+        ch="$label"
+        if   [ "$r" = "$y0" ] && [ "$cc" = "$x0" ];        then ch='┌'
+        elif [ "$r" = "$y0" ] && [ "$cc" = $((x1-1)) ];    then ch='┐'
+        elif [ "$r" = $((y1-1)) ] && [ "$cc" = "$x0" ];    then ch='└'
+        elif [ "$r" = $((y1-1)) ] && [ "$cc" = $((x1-1)) ];then ch='┘'
+        elif [ "$r" = "$y0" ] || [ "$r" = $((y1-1)) ];     then ch='─'
+        elif [ "$cc" = "$x0" ] || [ "$cc" = $((x1-1)) ];   then ch='│'
+        fi
+        row="${row:0:cc}${ch}${row:$((cc+1))}"
+      done
+      grid[r]="$row"
+    done
+  done < <(tmux list-panes -t "$sess:$win" -F '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}' 2>/dev/null)
+  local bar; bar=$(printf '─%.0s' $(seq 1 $Cw))
+  printf '┌%s┐\n' "$bar"
+  for ((r=0; r<Ch; r++)); do print_grid_row "${grid[r]}"; done
+  printf '└%s┘\n' "$bar"
+}
+
+while true; do
+  cols=$(tmux display-message -pt "${TMUX_PANE:-}" '#{pane_width}' 2>/dev/null); [ -z "$cols" ] && cols=40
+  rows=$(tmux display-message -pt "${TMUX_PANE:-}" '#{pane_height}' 2>/dev/null); [ -z "$rows" ] && rows=20
+
+  # branch
+  if [ -d "$wt" ]; then
+    branch=$(git -C "$wt" branch --show-current 2>/dev/null)
+    [ -z "$branch" ] && branch="detached@$(git -C "$wt" rev-parse --short HEAD 2>/dev/null)"
+  else
+    branch="(no worktree)"
+  fi
+
+  # scan every pane once → pstates (pid=CHAR) + aggregate flags for the badge
+  pstates=""; has_wait=0; has_work=0; has_claude=0; sess_ok=0
+  if tmux has-session -t "$session" 2>/dev/null; then
+    sess_ok=1
+    while read -r pid pcmd; do
+      case "$pcmd" in
+        [0-9]*.[0-9]*|claude)
+          has_claude=1
+          cap=$(tmux capture-pane -pt "$pid" 2>/dev/null)   # visible screen only (no stale scrollback)
+          if   printf '%s' "$cap" | grep -qiE "$WORK_MARK"; then pstates="$pstates $pid=W"; has_work=1
+          elif printf '%s' "$cap" | grep -qE  "$WAIT_MARK"; then pstates="$pstates $pid=!"; has_wait=1
+          else pstates="$pstates $pid=C"; fi
+          ;;
+        nvim) pstates="$pstates $pid=V" ;;
+        *)    pstates="$pstates $pid=·" ;;
+      esac
+    done < <(tmux list-panes -s -t "$session" -F '#{pane_id} #{pane_current_command}' 2>/dev/null)
+  fi
+
+  if   [ "$sess_ok" = 0 ];    then state=nosession
+  elif [ "$has_claude" = 0 ]; then state=offline
+  elif [ "$has_wait" = 1 ];   then state=waiting
+  elif [ "$has_work" = 1 ];   then state=working
+  else state=idle
+  fi
+
+  # hook status supplement (waiting confirmation if capture missed it)
+  f="$fleetdir/$session.status"
+  if [ -f "$f" ]; then
+    read -r hst hts _ < "$f" 2>/dev/null || true
+    if [ -n "${hts:-}" ]; then
+      age=$(( $(date +%s) - hts ))
+      [ "$hst" = "waiting" ] && [ "$age" -lt 300 ] && [ "$state" = "idle" ] && state="waiting"
+    fi
+  fi
+
+  ccount=$(printf '%s' "$pstates" | grep -oE '=[WC!]' | wc -l | tr -d ' ')
+  cnote=""; [ "$ccount" -gt 1 ] && cnote=" ${bold}${ccount}×claude${reset}"
+
+  case "$state" in
+    working)   badge="${byl}${bold} ⚙ WORKING ${reset}";           sc="$yel" ;;
+    waiting)   badge="${brd}${bold} ⌨ WAITING FOR INPUT ${reset}"; sc="$red" ;;
+    idle)      badge="${bgr}${bold} ✓ IDLE ${reset}";              sc="$grn" ;;
+    offline)   badge="${bgy}${bold} ○ NO CLAUDE ${reset}";         sc="$gry" ;;
+    nosession) badge="${bgy}${bold} ○ NO SESSION ${reset}";        sc="$gry" ;;
+  esac
+
+  maxb=$((cols - 4)); [ "$maxb" -lt 8 ] && maxb=8
+  b="$branch"; [ "${#b}" -gt "$maxb" ] && b="${b:0:maxb-1}…"
+
+  # Build the whole frame into one buffer, then redraw IN PLACE (cursor home +
+  # per-line erase, no full clear) and only when it changed — so a steady
+  # dashboard emits nothing and never blinks.
+  nl=$'\n'
+  printf -v l1 '%s%s %s %s%sWT%s%s  %s%s%s%s' "$bold" "$sc" "$key" "$reset" "$bold" "$n" "$reset" "$dim" "$repo" "$reset" "$cnote"
+  printf -v l2 '%s⎇ %s%s%s' "$cyn" "$bold" "$b" "$reset"
+  buf="${esc}[?25l${esc}[H${l1}${esc}[K${nl}${l2}${esc}[K${nl}${badge}${esc}[K${nl}"
+
+  if [ "$sess_ok" = 1 ]; then
+    Cw=$((cols - 2)); [ "$Cw" -lt 6 ] && Cw=6
+    Ch=$((rows - 6)); [ "$Ch" -lt 3 ] && Ch=3          # fill the rest of the card (no scroll)
+    mapout=$(draw_map "$session" 1 "$Cw" "$Ch" "$pstates")
+    while IFS= read -r ml; do buf+="${ml}${esc}[K${nl}"; done <<< "$mapout"
+  fi
+  buf+="${esc}[J"
+
+  if [ "$buf" != "${prev:-}" ]; then printf '%s' "$buf"; prev="$buf"; fi
+
+  sleep 2
+done

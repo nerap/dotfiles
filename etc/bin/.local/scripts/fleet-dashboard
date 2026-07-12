@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# fleet-dashboard [bare-repo-path] — live 4×2 status grid for worktrees 1-8 of a
+# bare-repo workspace. Bound to C-u. With no argument it detects the workspace
+# from the current tmux pane's path (falling back to prsnl_app), so it works for
+# any repo set up by clone-workspace. Layout mirrors the workspace nav keys:
+#     top row  →  WT1  WT2  WT3  WT4   (H J K L)
+#     bottom   →  WT5  WT6  WT7  WT8   (N M , .)
+# Each pane runs `fleet-card <bare> <n>` and self-refreshes; re-running just
+# switches back to the (per-repo) dashboard session.
+
+set -uo pipefail
+SD="$HOME/bin/.local/scripts"
+card="$SD/fleet-card"
+
+# Walk up from a path to the bare repo that owns it (same rule as switch-workspace).
+find_bare_repo() {
+  local dir="$1" parent
+  while [ "$dir" != "/" ] && [ -n "$dir" ]; do
+    parent=$(dirname "$dir")
+    if [ -f "$parent/config" ] && [ -d "$parent/refs" ]; then echo "$parent"; return 0; fi
+    if [ -f "$dir/config" ] && [ -d "$dir/refs" ]; then echo "$dir"; return 0; fi
+    dir="$parent"
+  done
+  return 1
+}
+
+bare="${1:-}"
+if [ -z "$bare" ] && [ -n "${TMUX:-}" ]; then
+  cur=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+  bare=$(find_bare_repo "$cur" 2>/dev/null || true)
+fi
+[ -z "$bare" ] && bare="$HOME/work/prsnl_app.git"
+if [ ! -d "$bare" ]; then
+  [ -n "${TMUX:-}" ] && tmux display-message "fleet: no worktree workspace here"
+  exit 0
+fi
+
+repo=$(basename "$bare" .git | tr . _)
+SESSION="fleet_${repo}"
+
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  # Each card's pane is rooted in its worktree so the global workspace-nav keys
+  # (C-h/j/k/l/n/m/,/.) resolve the bare repo and jump straight to that worktree.
+  a=$(tmux new-session -ds "$SESSION" -n dash -c "$bare/1" -P -F '#{pane_id}' "$card $bare 1")
+  tmux set-option -t "$SESSION" status off
+  tmux set-option -t "$SESSION" mouse off          # read-only: no click-select, no drag-resize
+  tmux set-option -t "$SESSION" pane-border-status top
+  tmux set-option -t "$SESSION" pane-border-format ' #{pane_index} '
+
+  # bottom-row anchor (WT5) — split the whole window into two rows
+  e=$(tmux split-window -v -p 50 -t "$a" -c "$bare/5" -P -F '#{pane_id}' "$card $bare 5")
+
+  # top row → 1 | 2 | 3 | 4
+  c=$(tmux split-window -h -p 50 -t "$a" -c "$bare/3" -P -F '#{pane_id}' "$card $bare 3")
+  tmux split-window -h -p 50 -t "$a" -c "$bare/2" -P -F '#{pane_id}' "$card $bare 2" >/dev/null
+  tmux split-window -h -p 50 -t "$c" -c "$bare/4" -P -F '#{pane_id}' "$card $bare 4" >/dev/null
+
+  # bottom row → 5 | 6 | 7 | 8
+  g=$(tmux split-window -h -p 50 -t "$e" -c "$bare/7" -P -F '#{pane_id}' "$card $bare 7")
+  tmux split-window -h -p 50 -t "$e" -c "$bare/6" -P -F '#{pane_id}' "$card $bare 6" >/dev/null
+  tmux split-window -h -p 50 -t "$g" -c "$bare/8" -P -F '#{pane_id}' "$card $bare 8" >/dev/null
+
+  tmux select-pane -t "$a"
+fi
+
+if [ -n "${TMUX:-}" ]; then
+  tmux switch-client -t "$SESSION"
+else
+  tmux attach-session -t "$SESSION"
+fi

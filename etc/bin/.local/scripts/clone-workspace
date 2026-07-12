@@ -293,6 +293,7 @@ Switch between workspaces using tmux keybindings:
 - **Ctrl+m** → Workspace 6 (feature dev)
 - **Ctrl+,** → Workspace 7 (feature dev)
 - **Ctrl+.** → Workspace 8 (feature dev)
+- **Ctrl+u** → Fleet dashboard (live status grid of all 8 worktrees)
 
 Or use the command:
 ```bash
@@ -423,6 +424,7 @@ echo "  Ctrl+n → Workspace 5 (${SAFE_REPO_NAME}_5)"
 echo "  Ctrl+m → Workspace 6 (${SAFE_REPO_NAME}_6)"
 echo "  Ctrl+, → Workspace 7 (${SAFE_REPO_NAME}_7)"
 echo "  Ctrl+. → Workspace 8 (${SAFE_REPO_NAME}_8)"
+echo "  Ctrl+u → Fleet dashboard (live status of all 8 worktrees)"
 echo ""
 echo "📂 Workspace Locations:"
 if [ "$IS_INIT_REPO" = true ]; then
