@@ -173,7 +173,9 @@ while true; do
   nl=$'\n'
   printf -v l1 '%s%s %s %s%sWT%s%s  %s%s%s%s' "$bold" "$sc" "$key" "$reset" "$bold" "$n" "$reset" "$dim" "$repo" "$reset" "$cnote"
   printf -v l2 '%s⎇ %s%s%s' "$cyn" "$bold" "$b" "$reset"
-  buf="${esc}[?25l${esc}[H${l1}${esc}[K${nl}${l2}${esc}[K${nl}${badge}${esc}[K${nl}"
+  # ${esc}[0m${esc}(B resets attributes + the ASCII charset each frame so a stray
+  # SO/SI or line-drawing byte can't wedge the pane (we redraw in place, no clear).
+  buf="${esc}[?25l${esc}[0m${esc}(B${esc}[H${l1}${esc}[K${nl}${l2}${esc}[K${nl}${badge}${esc}[K${nl}"
 
   if [ "$sess_ok" = 1 ]; then
     Cw=$((cols - 2)); [ "$Cw" -lt 6 ] && Cw=6
