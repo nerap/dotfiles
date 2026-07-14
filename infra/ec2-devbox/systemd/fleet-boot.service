@@ -1,0 +1,17 @@
+[Unit]
+Description=Rebuild workspace tmux sessions after boot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=@USER@
+Environment=HOME=/home/@USER@
+Environment=PATH=/home/@USER@/bin/.local/scripts:/home/@USER@/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/@USER@/bin/.local/scripts/fleet-boot
+# The work volume is mounted with nofail; if it's slow, give it a moment.
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 30); do [ -d /data/work ] && exit 0; sleep 2; done; exit 0'
+
+[Install]
+WantedBy=multi-user.target

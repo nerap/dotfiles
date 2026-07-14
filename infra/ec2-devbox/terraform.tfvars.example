@@ -1,0 +1,27 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+# Profile with EC2 rights. NOTE: your `default` profile (rush-uploader) is DENIED EC2.
+aws_profile = "admin"
+
+# eu-west-3 (Paris) ≈ 10-15ms from FR — best typing feel in tmux.
+# eu-north-1 (Stockholm) is ~10-15% cheaper but ~30-40ms.
+region            = "eu-west-3"
+availability_zone = "eu-west-3a"
+
+# 16 vCPU / 128 GB Graviton. Drop to r7g.2xlarge (64GB) to halve the hourly rate.
+instance_type = "r7g.4xlarge"
+
+# ~55GB is your real footprint once all 8 worktrees are built; 300 leaves headroom.
+# Billed 24/7 even while stopped (~$28/mo).
+work_volume_gb = 300
+
+# REQUIRED. Your public key — e.g. `pbpaste` from 1Password, or:
+#   cat ~/.ssh/id_ed25519.pub
+ssh_public_key = "ssh-ed25519 AAAA... you@example.com"
+
+# REQUIRED. Lock SSH to your IP. Get it with: curl -s ifconfig.me
+# Never use 0.0.0.0/0 — SSM Session Manager is your fallback if your IP moves.
+allowed_ssh_cidrs = ["1.2.3.4/32"]
+
+# Stop after this many minutes idle. A working Claude never gets stopped.
+idle_stop_minutes = 30

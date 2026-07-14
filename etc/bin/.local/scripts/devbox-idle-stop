@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# devbox-idle-stop — stop the EC2 devbox when nothing is actually happening.
+# Run from a systemd timer (every 5 min). Instance shutdown-behavior is "stop",
+# so `shutdown -h` pauses billing rather than destroying the box.
+#
+# The box is IDLE only if ALL of these hold:
+#   1. no tmux client attached          (nobody is SSH'd in and looking at it)
+#   2. no Claude pane is WORKING        (never kill a running agent — the whole point)
+#   3. load average is low              (no build/test grinding in a plain shell)
+#
+# Idle must hold for IDLE_MINUTES *continuously* (tracked across ticks) before we
+# stop. Any non-idle tick resets the counter.
+#
+# Escape hatch:  touch ~/.devbox-nostop   → never auto-stops.
+set -uo pipefail
+
+IDLE_MINUTES="${IDLE_MINUTES:-30}"
+TICK_MINUTES="${TICK_MINUTES:-5}"
+LOAD_MAX="${LOAD_MAX:-1.0}"
+STATE="${XDG_RUNTIME_DIR:-/tmp}/devbox-idle.count"
+LOG=/var/log/devbox-idle-stop.log
+
+log() { printf '%s %s\n' "$(date -Is)" "$*" | sudo tee -a "$LOG" >/dev/null 2>&1 || true; }
+
+not_idle() { echo 0 > "$STATE"; log "active: $1"; exit 0; }
+
+# ── 0. escape hatch + don't stop a box that just booted (no stop-loops)
+[ -e "$HOME/.devbox-nostop" ] && { log "skip: ~/.devbox-nostop present"; exit 0; }
+up_min=$(awk '{print int($1/60)}' /proc/uptime)
+[ "$up_min" -lt 10 ] && { log "skip: booted ${up_min}m ago"; exit 0; }
+
+# ── 1. anyone attached?
+if tmux list-clients 2>/dev/null | grep -q .; then
+  not_idle "tmux client attached"
+fi
+
+# ── 2. any Claude actually working? (same detection as fleet-card)
+WORK_MARK='esc to interrupt|Running…|\([0-9]+m? ?[0-9]*s ·|[↑↓] [0-9.,]+k? tokens'
+if tmux has-session 2>/dev/null || tmux list-sessions >/dev/null 2>&1; then
+  while read -r pid pcmd; do
+    # Claude Code sets its process title to its version, e.g. "2.1.207"
+    case "$pcmd" in
+      [0-9]*.[0-9]*|claude) ;;
+      *) continue ;;
+    esac
+    cap=$(tmux capture-pane -pt "$pid" 2>/dev/null)   # visible screen only
+    if printf '%s' "$cap" | grep -qiE "$WORK_MARK"; then
+      not_idle "Claude working in pane $pid"
+    fi
+  done < <(tmux list-panes -a -F '#{pane_id} #{pane_current_command}' 2>/dev/null)
+fi
+
+# ── 3. anything heavy running outside tmux?
+load=$(awk '{print $2}' /proc/loadavg)   # 5-min average
+if awk -v l="$load" -v m="$LOAD_MAX" 'BEGIN{exit !(l > m)}'; then
+  not_idle "load ${load} > ${LOAD_MAX}"
+fi
+
+# ── idle this tick — accumulate
+count=$(cat "$STATE" 2>/dev/null || echo 0)
+count=$((count + 1))
+echo "$count" > "$STATE"
+
+needed=$(( (IDLE_MINUTES + TICK_MINUTES - 1) / TICK_MINUTES ))
+log "idle tick ${count}/${needed} (load ${load})"
+
+if [ "$count" -ge "$needed" ]; then
+  log "IDLE ${IDLE_MINUTES}m — stopping instance"
+  rm -f "$STATE"
+  sudo shutdown -h now "devbox idle for ${IDLE_MINUTES}m"
+fi

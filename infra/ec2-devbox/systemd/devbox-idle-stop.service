@@ -1,0 +1,11 @@
+[Unit]
+Description=Stop the devbox when idle (no tmux client, no Claude working, low load)
+
+[Service]
+Type=oneshot
+User=@USER@
+Environment=HOME=/home/@USER@
+Environment=IDLE_MINUTES=@IDLE_MINUTES@
+Environment=TICK_MINUTES=5
+Environment=PATH=/home/@USER@/bin/.local/scripts:/usr/local/bin:/usr/bin:/bin:/sbin:/usr/sbin
+ExecStart=/home/@USER@/bin/.local/scripts/devbox-idle-stop

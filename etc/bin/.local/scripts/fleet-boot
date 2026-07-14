@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# fleet-boot — rebuild every workspace tmux session after a boot.
+#
+# Stopping an EC2 instance kills the tmux server, which would otherwise mean logging
+# in to an empty box. This walks every bare-repo workspace in ~/work and recreates
+# <repo>_<n> for each existing worktree, with the same layout clone-workspace uses
+# (window 1: terminal | Claude pane, window 2: nvim).
+#
+# Claude is deliberately NOT auto-started — same as the local setup, the right pane
+# is a plain terminal you start Claude in. Your conversations survive on disk, so
+# `claude --continue` picks up where you left off.
+#
+# Run by fleet-boot.service at boot; safe to run by hand any time (idempotent).
+set -uo pipefail
+
+WORK="${WORK_DIR:-$HOME/work}"
+created=0
+
+for bare in "$WORK"/*.git; do
+  [ -d "$bare" ] || continue
+  # a real bare repo: has config + refs
+  [ -f "$bare/config" ] && [ -d "$bare/refs" ] || continue
+
+  repo=$(basename "$bare" .git | tr . _)
+
+  for n in 1 2 3 4 5 6 7 8; do
+    wt="$bare/$n"
+    [ -d "$wt" ] || continue                      # only worktrees that exist
+    session="${repo}_${n}"
+    tmux has-session -t "$session" 2>/dev/null && continue
+
+    tmux new-session  -ds "$session" -c "$wt"
+    # window 1: terminal (left) + a terminal for Claude (right). Splitting rather
+    # than running claude directly means Ctrl+C can't kill the pane.
+    tmux split-window -t "$session:1" -h -p 50 -c "$wt"
+    # window 2: nvim
+    tmux new-window   -t "$session:2" -c "$wt"
+    tmux send-keys    -t "$session:2" 'nvim .' C-m
+    tmux select-window -t "$session:1"
+
+    echo "✓ $session"
+    created=$((created + 1))
+  done
+done
+
+echo "fleet-boot: ${created} session(s) created"
