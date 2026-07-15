@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# devbox-claude-login — copy THIS Mac's Claude Code login to the devbox.
+#
+# Why: the box's interactive `claude` TUI can't finish OAuth (its localhost
+# callback is a random port on the box, unreachable from your Mac browser), and
+# CLAUDE_CODE_OAUTH_TOKEN only covers `claude -p`. Claude on macOS keeps its login
+# in the Keychain; on Linux it's a file. This reads your Keychain credential and
+# installs it on the box so interactive `claude` is logged in there too.
+#
+# Run this on your Mac (Claude must be logged in here). macOS will ask you to
+# allow Keychain access — click Allow. The credential goes over SSH via stdin,
+# never printed or placed in argv.
+set -uo pipefail
+
+[ -f "$HOME/.config/devbox.env" ] && . "$HOME/.config/devbox.env"
+NAME="${DEVBOX_NAME:-devbox}"
+
+cred=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null) || {
+  echo "✗ Couldn't read Claude creds from your Keychain. Is Claude logged in on this Mac?" >&2; exit 1; }
+printf '%s' "$cred" | python3 -c 'import json,sys; json.load(sys.stdin)' >/dev/null 2>&1 || {
+  echo "✗ Keychain value isn't valid JSON — aborting." >&2; exit 1; }
+
+# credential file (the actual login)
+printf '%s' "$cred" | ssh "$NAME" 'umask 077; mkdir -p ~/.claude; cat > ~/.claude/.credentials.json; chmod 600 ~/.claude/.credentials.json'
+
+# mark onboarding done + carry account info so the TUI skips theme/login
+patch=$(python3 -c "import json;d=json.load(open('$HOME/.claude.json'));print(json.dumps({'hasCompletedOnboarding':True,'oauthAccount':d.get('oauthAccount')}))")
+printf '%s' "$patch" | ssh "$NAME" 'jq -s ".[0] * .[1]" ~/.claude.json - > ~/.claude.json.new && mv ~/.claude.json.new ~/.claude.json'
+
+echo "✓ Claude login copied to '$NAME'."
+echo "  Open a NEW pane/window on the box and run:  claude   (no login prompt)"
