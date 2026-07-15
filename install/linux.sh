@@ -42,6 +42,13 @@ os_finish() {
   log "Claude Code"
   have claude || sudo npm install -g @anthropic-ai/claude-code
 
+  log "Docker (per-worktree dev stacks: compose + local supabase)"
+  if ! have docker; then
+    curl -fsSL https://get.docker.com | sudo sh
+    sudo usermod -aG docker "$USER"          # re-login (or fleet-boot) picks up the group
+    sudo systemctl enable --now docker
+  fi
+
   log "PATH for login shells"
   grep -q 'dotfiles/etc/bin/.local/scripts' ~/.profile 2>/dev/null || \
     echo 'export PATH="$HOME/bin/.local/scripts:$HOME/.bun/bin:$PATH"' >> ~/.profile
