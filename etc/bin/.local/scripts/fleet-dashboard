@@ -48,17 +48,17 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux set-option -t "$SESSION" pane-border-format ' #{pane_index} '
 
   # bottom-row anchor (WT5) — split the whole window into two rows
-  e=$(tmux split-window -v -p 50 -t "$a" -c "$bare/5" -P -F '#{pane_id}' "$card $bare 5")
+  e=$(tmux split-window -v -l 50% -t "$a" -c "$bare/5" -P -F '#{pane_id}' "$card $bare 5")
 
   # top row → 1 | 2 | 3 | 4
-  c=$(tmux split-window -h -p 50 -t "$a" -c "$bare/3" -P -F '#{pane_id}' "$card $bare 3")
-  tmux split-window -h -p 50 -t "$a" -c "$bare/2" -P -F '#{pane_id}' "$card $bare 2" >/dev/null
-  tmux split-window -h -p 50 -t "$c" -c "$bare/4" -P -F '#{pane_id}' "$card $bare 4" >/dev/null
+  c=$(tmux split-window -h -l 50% -t "$a" -c "$bare/3" -P -F '#{pane_id}' "$card $bare 3")
+  tmux split-window -h -l 50% -t "$a" -c "$bare/2" -P -F '#{pane_id}' "$card $bare 2" >/dev/null
+  tmux split-window -h -l 50% -t "$c" -c "$bare/4" -P -F '#{pane_id}' "$card $bare 4" >/dev/null
 
   # bottom row → 5 | 6 | 7 | 8
-  g=$(tmux split-window -h -p 50 -t "$e" -c "$bare/7" -P -F '#{pane_id}' "$card $bare 7")
-  tmux split-window -h -p 50 -t "$e" -c "$bare/6" -P -F '#{pane_id}' "$card $bare 6" >/dev/null
-  tmux split-window -h -p 50 -t "$g" -c "$bare/8" -P -F '#{pane_id}' "$card $bare 8" >/dev/null
+  g=$(tmux split-window -h -l 50% -t "$e" -c "$bare/7" -P -F '#{pane_id}' "$card $bare 7")
+  tmux split-window -h -l 50% -t "$e" -c "$bare/6" -P -F '#{pane_id}' "$card $bare 6" >/dev/null
+  tmux split-window -h -l 50% -t "$g" -c "$bare/8" -P -F '#{pane_id}' "$card $bare 8" >/dev/null
 
   tmux select-pane -t "$a"
 fi

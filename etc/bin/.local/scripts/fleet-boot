@@ -32,7 +32,7 @@ for bare in "$WORK"/*.git; do
     tmux new-session  -ds "$session" -c "$wt"
     # window 1: terminal (left) + a terminal for Claude (right). Splitting rather
     # than running claude directly means Ctrl+C can't kill the pane.
-    tmux split-window -t "$session:1" -h -p 50 -c "$wt"
+    tmux split-window -t "$session:1" -h -l 50% -c "$wt"
     # window 2: nvim
     tmux new-window   -t "$session:2" -c "$wt"
     tmux send-keys    -t "$session:2" 'nvim .' C-m

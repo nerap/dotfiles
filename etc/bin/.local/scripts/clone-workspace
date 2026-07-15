@@ -397,7 +397,7 @@ for i in 1 2 3 4 5 6 7 8; do
   # Window 1: Split terminal (50%) + Claude pane (50%)
   # Right pane is a terminal (not running claude directly)
   # This prevents Ctrl+C from closing the pane
-  tmux split-window -t "$SESSION_NAME:1" -h -p 50 -c "$WORKSPACE_PATH"
+  tmux split-window -t "$SESSION_NAME:1" -h -l 50% -c "$WORKSPACE_PATH"
 
   # Window 2: Nvim
   tmux new-window -t "$SESSION_NAME:2" -c "$WORKSPACE_PATH"
