@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# devbox-set-token — store a Claude Code OAuth token on the devbox securely.
+#
+# Why: `claude login` on the box can't complete its OAuth callback (random
+# localhost port on the box, unreachable from your Mac browser). A long-lived
+# token sidesteps the whole flow.
+#
+# Usage:
+#   1) on THIS Mac:  claude setup-token      # opens your local browser, prints a token
+#   2)               devbox-set-token        # paste the token when prompted
+#   3) on the box:   open a new shell (or `source ~/.zsh_secrets`) then run `claude`
+#
+# The token is read hidden, sent over SSH via stdin (never in argv/ps/history),
+# and written to the box's ~/.zsh_secrets (chmod 600), replacing any prior token.
+set -uo pipefail
+
+[ -f "$HOME/.config/devbox.env" ] && . "$HOME/.config/devbox.env"
+NAME="${DEVBOX_NAME:-devbox}"
+
+printf 'Paste CLAUDE_CODE_OAUTH_TOKEN (input hidden): ' >&2
+read -rs tok; echo >&2
+[ -z "${tok:-}" ] && { echo "no token given — aborting" >&2; exit 1; }
+
+printf "export CLAUDE_CODE_OAUTH_TOKEN='%s'\n" "$tok" \
+  | ssh "$NAME" 'umask 077; f="$HOME/.zsh_secrets"; touch "$f"; chmod 600 "$f";
+                 sed -i "/CLAUDE_CODE_OAUTH_TOKEN/d" "$f"; cat >> "$f"'
+unset tok
+echo "✓ token stored on '$NAME' in ~/.zsh_secrets." >&2
+echo "  On the box: open a new shell (or 'source ~/.zsh_secrets') then run 'claude'." >&2

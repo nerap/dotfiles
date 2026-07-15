@@ -49,6 +49,27 @@ os_finish() {
     sudo systemctl enable --now docker
   fi
 
+  log "Stable SSH agent socket (forwarded agent → git@github works in tmux panes)"
+  mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  cat > ~/.ssh/rc <<'RC'
+#!/bin/sh
+# sshd runs this on every incoming connection. Point a stable path at the current
+# forwarded SSH agent so tmux panes (which outlive any single SSH connection) keep
+# authenticating to git@github after reconnects.
+[ -n "$SSH_AUTH_SOCK" ] && ln -sf "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+RC
+  chmod 644 ~/.ssh/rc
+
+  log "1Password CLI (op) — for 'op run' secret injection"
+  if ! have op; then
+    curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
+      | sudo gpg --dearmor --yes -o /usr/share/keyrings/1password-archive-keyring.gpg 2>/dev/null || true
+    local arch; arch=$(dpkg --print-architecture)
+    echo "deb [arch=$arch signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$arch stable main" \
+      | sudo tee /etc/apt/sources.list.d/1password.list >/dev/null
+    sudo apt-get update -y && sudo apt-get install -y 1password-cli || warn "op install failed (non-fatal)"
+  fi
+
   log "PATH for login shells"
   grep -q 'dotfiles/etc/bin/.local/scripts' ~/.profile 2>/dev/null || \
     echo 'export PATH="$HOME/bin/.local/scripts:$HOME/.bun/bin:$PATH"' >> ~/.profile
