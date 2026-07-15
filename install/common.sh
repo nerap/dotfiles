@@ -29,8 +29,9 @@ common_setup() {
   chmod +x ~/personal/dotfiles/etc/bin/.local/scripts/* 2>/dev/null || true
   # ~/bin -> the scripts dir (switch-workspace, clone-workspace, fleet-*, devbox…)
   [ -e ~/bin ] || ln -s personal/dotfiles/etc/bin ~/bin
-  ln -sfn ~/config/tmux/.tmux.conf "$HOME/.tmux.conf"
-  ln -sfn ~/config/zsh/.zshrc      "$HOME/.zshrc"
+  ln -sfn ~/config/tmux/.tmux.conf   "$HOME/.tmux.conf"
+  ln -sfn ~/config/zsh/.zshrc        "$HOME/.zshrc"
+  ln -sfn ~/config/zsh/.zsh_profile  "$HOME/.zsh_profile"   # .zshrc sources this
   # nvim + claude are stow packages (per-file symlinks)
   stow --dir="$HOME/config"            --target="$HOME/.config/nvim" -R nvim
   stow --dir="$HOME/personal/dotfiles" --target="$HOME/.claude"      -R dotclaude
