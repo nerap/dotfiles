@@ -97,8 +97,21 @@ cmd_up() {
     ssh -o ConnectTimeout=3 -o BatchMode=yes "$NAME" true 2>/dev/null && break
     sleep 3
   done
+  start_url_watcher
   say "attaching (Ctrl+u for the fleet dashboard)"
   exec ssh -At "$NAME" 'tmux attach || tmux new -s main'
+}
+
+# Watch the box's URL queue and open each URL in the local (Mac) browser, so
+# `claude login` / MCP OAuth / `gh auth` on the box pop THIS machine's browser.
+start_url_watcher() {
+  local pidf="$HOME/.cache/devbox-url-watcher.pid"
+  mkdir -p "$HOME/.cache"
+  if [ -f "$pidf" ] && kill -0 "$(cat "$pidf" 2>/dev/null)" 2>/dev/null; then return; fi
+  ( ssh "$NAME" 'mkdir -p ~/ 2>/dev/null; : >> ~/.url-open-queue; tail -n0 -F ~/.url-open-queue 2>/dev/null' \
+      | while IFS= read -r u; do [ -n "$u" ] && open "$u"; done ) >/dev/null 2>&1 &
+  echo $! > "$pidf"
+  say "url-watcher on — browser opens (claude login, MCP OAuth) land on this Mac"
 }
 
 cmd_down() {

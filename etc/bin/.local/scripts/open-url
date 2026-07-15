@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# open-url <url>  (also accepts a URL on stdin)
+#
+# Opens a URL in your REAL browser from anywhere:
+#   - on macOS            → opens it locally (`open`)
+#   - on a headless Linux → appends it to ~/.url-open-queue, which the Mac-side
+#                           watcher started by `devbox up` opens in your browser
+#
+# Set as $BROWSER (and shimmed as xdg-open) on the devbox so `claude login`,
+# MCP OAuth, `gh auth`, etc. pop YOUR browser instead of failing on the box.
+url="$*"
+[ -z "$url" ] && IFS= read -r url
+
+[ -z "$url" ] && { echo "open-url: no URL given" >&2; exit 1; }
+
+case "$(uname -s)" in
+  Darwin)
+    open "$url"
+    ;;
+  *)
+    printf '%s\n' "$url" >> "$HOME/.url-open-queue"
+    printf '\n\033[1;32m→ sent to your Mac browser:\033[0m %s\n' "$url" >&2
+    ;;
+esac
