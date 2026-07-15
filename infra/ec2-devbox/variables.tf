@@ -1,7 +1,7 @@
 variable "aws_profile" {
-  description = "AWS CLI profile to use. Must have EC2 rights (the default 'rush-uploader' does NOT)."
+  description = "AWS CLI profile to use. Must have EC2 rights. 'personal' is an SSO admin profile in a dedicated account (592197479706); run `aws sso login --profile personal` if creds expire."
   type        = string
-  default     = "admin"
+  default     = "personal"
 }
 
 variable "region" {
