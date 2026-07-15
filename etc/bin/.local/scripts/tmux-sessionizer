@@ -163,7 +163,9 @@ if [[ $# -eq 1 ]]; then
     selected_path=$1
 else
     # Show FZF with formatted list (most recent at top, no sorting by fzf for speed)
-    selected=$(build_selection_list | fzf --no-sort --delimiter='|' --with-nth=3 --tiebreak=index)
+    # NB: --delimiter is a REGEX; a bare '|' means alternation (splits every char)
+    # on stricter/older fzf (e.g. Ubuntu's 0.44). Escape it to match a literal pipe.
+    selected=$(build_selection_list | fzf --no-sort --delimiter='\|' --with-nth=3 --tiebreak=index)
 
     if [[ -z $selected ]]; then
         exit 0
