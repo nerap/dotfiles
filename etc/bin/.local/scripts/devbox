@@ -44,6 +44,28 @@ ensure_auth() {
   AUTH_OK=1
 }
 
+# Make sure port 22 in devbox-sg allows YOUR current IP. ISPs rotate IPs, and a
+# stale rule makes `devbox up` hang forever waiting for sshd. Adds the current IP
+# (idempotent) and prunes other /32s so the group stays tight.
+ensure_sg() {
+  local myip sg
+  myip=$(curl -fsS4 --max-time 6 https://api.ipify.org 2>/dev/null) || { say "couldn't detect IP — skipping SG check"; return 0; }
+  sg=$(aws_ ec2 describe-security-groups --filters "Name=group-name,Values=${NAME}-sg" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
+  [ -n "$sg" ] && [ "$sg" != "None" ] || return 0
+  local have
+  have=$(aws_ ec2 describe-security-groups --group-ids "$sg" --query "SecurityGroups[0].IpPermissions[?FromPort==\`22\`].IpRanges[].CidrIp" --output text 2>/dev/null)
+  case " $have " in
+    *" $myip/32 "*) return 0 ;;  # already allowed
+  esac
+  say "IP changed → updating $NAME-sg to allow $myip"
+  aws_ ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port 22 --cidr "$myip/32" >/dev/null 2>&1
+  local old
+  for old in $have; do
+    [ "$old" = "$myip/32" ] && continue
+    aws_ ec2 revoke-security-group-ingress --group-id "$sg" --protocol tcp --port 22 --cidr "$old" >/dev/null 2>&1
+  done
+}
+
 need_id() {
   ensure_auth
   local id; id=$(instance_id)
@@ -103,6 +125,7 @@ cmd_up() {
     aws_ ec2 start-instances --instance-ids "$id" >/dev/null || die "start failed"
     aws_ ec2 wait instance-running --instance-ids "$id" || die "never reached running"
   fi
+  ensure_sg
   ip=$(pub_ip "$id")
   write_ssh_conf "$ip"
   say "waiting for sshd on $ip"
