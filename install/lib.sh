@@ -37,9 +37,14 @@ clone_or_pull() {
   fi
 }
 
-# require a working SSH agent for cloning private repos (git@github.com)
+# require a working SSH agent for cloning private repos (git@github.com).
+# Note: `ssh -T git@github.com` ALWAYS exits non-zero ("no shell access"), so we
+# capture its output and grep the string — piping it would trip `set -o pipefail`.
 require_github_ssh() {
-  if ! ssh -o BatchMode=yes -o ConnectTimeout=8 -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-    die "GitHub SSH auth failed. On macOS: unlock 1Password. On Linux: ssh in with agent forwarding (devbox provision / ssh -A), or load a key."
-  fi
+  local out
+  out=$(ssh -o BatchMode=yes -o ConnectTimeout=8 -T git@github.com 2>&1 || true)
+  case "$out" in
+    *"successfully authenticated"*) return 0 ;;
+    *) die "GitHub SSH auth failed. On macOS: unlock 1Password. On Linux: ssh in with agent forwarding (devbox provision / ssh -A), or load a key." ;;
+  esac
 }
