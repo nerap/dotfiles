@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# fleet-docker <up|down|status|logs> [bare-repo] — manage each worktree's dev
+# docker stack. Each worktree runs docker-compose.dev.yml as its OWN compose
+# project (named <repo>_<n>), so all 8 are isolated and can run at once (128GB).
+#
+# Requires each worktree to have its env in place (.env / .env.local with the
+# slot-specific ports + secrets) — same files your vite dev server needs. Without
+# them, compose can't start the app services (and host ports would collide).
+set -uo pipefail
+
+action="${1:-status}"
+bare="${2:-$HOME/work/prsnl_app.git}"
+compose="docker-compose.dev.yml"
+repo="$(basename "$bare" .git | tr . _)"
+
+for n in 1 2 3 4 5 6 7 8; do
+  wt="$bare/$n"
+  [ -d "$wt" ] && [ -f "$wt/$compose" ] || continue
+  proj="${repo}_${n}"
+  case "$action" in
+    up)
+      if [ ! -f "$wt/.env" ] && [ ! -f "$wt/.env.local" ]; then
+        printf '⚠ %s: no .env/.env.local — skipping (place env first)\n' "$proj"; continue
+      fi
+      printf '▸ %s up\n' "$proj"
+      ( cd "$wt" && docker compose -p "$proj" -f "$compose" up -d )
+      ;;
+    down)
+      printf '▸ %s down\n' "$proj"
+      ( cd "$wt" && docker compose -p "$proj" -f "$compose" down )
+      ;;
+    logs)
+      ( cd "$wt" && docker compose -p "$proj" -f "$compose" logs --tail=40 )
+      ;;
+    status|*)
+      running=$(docker compose -p "$proj" -f "$compose" ps -q 2>/dev/null | wc -l | tr -d ' ')
+      printf '%-16s %s container(s) up\n' "$proj" "$running"
+      ;;
+  esac
+done
