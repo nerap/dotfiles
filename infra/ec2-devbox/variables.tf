@@ -40,7 +40,7 @@ variable "instance_type" {
 variable "root_volume_gb" {
   description = "Root volume (OS + tooling only). Work lives on the separate volume below."
   type        = number
-  default     = 40
+  default     = 100
 }
 
 variable "work_volume_gb" {
