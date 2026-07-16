@@ -135,7 +135,7 @@ cmd_up() {
   done
   start_url_watcher
   say "attaching (Ctrl+u for the fleet dashboard)"
-  exec ssh -At "$NAME" 'tmux attach || tmux new -s main'
+  exec ssh -At "$NAME" 'S=$(tmux ls -F "#{session_name}" 2>/dev/null | grep -E "_[1-8]$" | sort | head -1); [ -n "$S" ] && exec tmux attach -t "$S"; exec tmux attach 2>/dev/null || exec tmux new -s main'
 }
 
 # Watch the box's URL queue and open each URL in the local (Mac) browser, so
