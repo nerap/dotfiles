@@ -128,11 +128,20 @@ cmd_up() {
   ensure_sg
   ip=$(pub_ip "$id")
   write_ssh_conf "$ip"
+  # Tear down any stale ControlMaster socket. When your laptop IP changes the
+  # master TCP dies but its socket lingers, and new ssh calls reuse the dead
+  # master and hang — which is what makes `up` "loop". Start clean.
+  ssh -O exit "$NAME" 2>/dev/null || true
+  rm -f "$HOME"/.ssh/cm-* 2>/dev/null || true
   say "waiting for sshd on $ip"
-  for _ in $(seq 1 60); do
-    ssh -o ConnectTimeout=3 -o BatchMode=yes "$NAME" true 2>/dev/null && break
+  local ok=0
+  for i in $(seq 1 40); do
+    ssh -o ConnectTimeout=4 -o BatchMode=yes -o ControlMaster=no -o ControlPath=none "$NAME" true 2>/dev/null && { ok=1; break; }
+    # Re-assert the SG every ~8 tries in case the IP rotated again mid-wait.
+    [ $((i % 8)) -eq 0 ] && ensure_sg
     sleep 3
   done
+  [ "$ok" = 1 ] || die "sshd unreachable after 2min. Check: aws profile/SSO, and that $NAME-sg allows your IP ($(curl -fsS4 --max-time 5 https://api.ipify.org 2>/dev/null))."
   start_url_watcher
   say "attaching (Ctrl+u for the fleet dashboard)"
   exec ssh -At "$NAME" 'S=$(tmux ls -F "#{session_name}" 2>/dev/null | grep -E "_[1-8]$" | sort | head -1); [ -n "$S" ] && exec tmux attach -t "$S"; exec tmux attach 2>/dev/null || exec tmux new -s main'
