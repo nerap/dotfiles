@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# snip2box — interactive screenshot -> ship to the devbox -> path on the clipboard.
+# Bind to a hotkey. Flow: press hotkey -> drag a region (Esc cancels) -> the PNG
+# lands in ~ubuntu/Downloads on the box and its path is copied to your Mac
+# clipboard, so Cmd+V into Claude (over SSH) reads the image.
+#
+# Usage: snip2box [ssh-host]   (default host: devbox)
+# Standalone (no shell function needed) so window managers / launchers can call it.
+set -uo pipefail
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
+
+HOST="${1:-devbox}"
+tmp="/tmp/snip-$(date +%s).png"
+
+notify() { osascript -e "display notification \"$1\" with title \"snip2box → $HOST\"" 2>/dev/null; }
+
+# interactive region capture straight to a file; Esc / cancel leaves no file
+screencapture -i "$tmp" 2>/dev/null
+[ -s "$tmp" ] || { notify "cancelled"; exit 0; }
+
+name=$(basename "$tmp"); remote="Downloads/$name"; full="/home/ubuntu/$remote"
+if ! scp -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=12 -o LogLevel=ERROR -q "$tmp" "$HOST:$remote" 2>/dev/null; then
+  # box's ~/Downloads should exist; if not, create and retry once
+  ssh -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=12 -o LogLevel=ERROR "$HOST" 'mkdir -p ~/Downloads' 2>/dev/null
+  scp -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=12 -o LogLevel=ERROR -q "$tmp" "$HOST:$remote" 2>/dev/null \
+    || { notify "scp failed — is the box up? (devbox up)"; rm -f "$tmp"; exit 1; }
+fi
+rm -f "$tmp"
+
+printf '%s' "$full" | pbcopy
+notify "copied path — Cmd+V into Claude"
+printf '%s\n' "$full"
