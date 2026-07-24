@@ -97,6 +97,12 @@ write_ssh_conf() {
         echo "  LocalForward $((base + o)) 127.0.0.1:$((base + o))"
       done
     done
+    # MCP OAuth callback ports on the box. When you authenticate a remote MCP
+    # (Notion, Figma, Sentry…) in Claude ON the box, it runs a loopback callback
+    # server here; forwarding these lets the Mac browser's redirect reach it.
+    for p in 64676 33418 8976; do
+      echo "  LocalForward $p 127.0.0.1:$p   # MCP OAuth callback"
+    done
   } > "$f"
   chmod 600 "$f"
 
