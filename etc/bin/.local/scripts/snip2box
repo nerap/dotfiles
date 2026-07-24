@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
-# snip2box — interactive screenshot -> ship to the devbox -> path on the clipboard.
-# Bound to a hotkey (aerospace ctrl-cmd-p). Because aerospace runs this with a
-# bare environment, everything is made explicit: absolute tool paths, a fixed
-# HOME, a log file, and audible/visual feedback (notifications are unreliable
-# when spawned from aerospace).
+# snip2box — ship the CLIPBOARD image to the devbox and put its path back on the
+# clipboard. Reads the pasteboard with pngpaste (needs NO Screen Recording
+# permission, unlike screencapture — which AeroSpace can't reliably get).
 #
-# Flow: hotkey -> drag a region (Esc cancels) -> PNG lands in ~ubuntu/Downloads
-# on the box, its path is copied to the Mac clipboard, and a sound plays.
-# Then Cmd+V the path into Claude on the box.
+# Flow:
+#   1. Screenshot to clipboard:  Cmd+Ctrl+Shift+4  (native macOS; the OS captures)
+#   2. Press the hotkey (aerospace ctrl-cmd-p) -> this ships it + copies the path
+#   3. Cmd+V the path into Claude on the box
 #
-# Usage: snip2box [ssh-host]   (default: devbox).  Debug: tail -f ~/snip2box.log
+# Usage: snip2box [ssh-host]   (default devbox).  Debug: cat ~/snip2box.log
 set -uo pipefail
 export HOME="/Users/nerap"
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$HOME/bin/.local/scripts"
@@ -20,31 +19,30 @@ tmp="/tmp/snip-$(date +%s).png"
 
 log()  { echo "$(date '+%H:%M:%S') $*" >> "$LOG"; }
 ok()   { afplay /System/Library/Sounds/Glass.aiff >/dev/null 2>&1 & osascript -e "display notification \"$1\" with title \"snip2box\"" >/dev/null 2>&1; }
-fail() { afplay /System/Library/Sounds/Basso.aiff >/dev/null 2>&1 & osascript -e "display notification \"$1\" with title \"snip2box FAILED\"" >/dev/null 2>&1; log "FAIL: $1"; }
+fail() { afplay /System/Library/Sounds/Basso.aiff >/dev/null 2>&1 & osascript -e "display notification \"$1\" with title \"snip2box\"" >/dev/null 2>&1; log "FAIL: $1"; }
 
 log "=== run: host=$HOST ==="
 
-# 1. interactive region capture; Esc / cancel leaves no file
-/usr/sbin/screencapture -i "$tmp" 2>>"$LOG"
-if [ ! -s "$tmp" ]; then log "cancelled or empty capture"; exit 0; fi
-log "captured $(/usr/bin/stat -f%z "$tmp") bytes -> $tmp"
+# 1. pull the image OUT of the clipboard (no screen-recording perm needed)
+if ! /opt/homebrew/bin/pngpaste "$tmp" 2>>"$LOG" || [ ! -s "$tmp" ]; then
+  fail "no image in clipboard — screenshot first (Cmd+Ctrl+Shift+4)"
+  /bin/rm -f "$tmp"; exit 1
+fi
+log "clipboard image: $(/usr/bin/stat -f%z "$tmp") bytes"
 
-# 2. ship to the box (explicit ssh opts: no multiplexing, use ~/.ssh/config)
+# 2. ship to the box
 name=$(/usr/bin/basename "$tmp"); remote="Downloads/$name"; full="/home/ubuntu/$remote"
 SSH_OPTS="-F $HOME/.ssh/config -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=15 -o BatchMode=yes -o LogLevel=ERROR"
-if /usr/bin/scp $SSH_OPTS -q "$tmp" "$HOST:$remote" 2>>"$LOG"; then
-  log "scp OK -> $HOST:$remote"
-else
-  # retry once after ensuring the dir exists
+if ! /usr/bin/scp $SSH_OPTS -q "$tmp" "$HOST:$remote" 2>>"$LOG"; then
   /usr/bin/ssh $SSH_OPTS "$HOST" 'mkdir -p ~/Downloads' 2>>"$LOG"
-  if ! /usr/bin/scp $SSH_OPTS -q "$tmp" "$HOST:$remote" 2>>"$LOG"; then
-    fail "scp to $HOST failed (box up? key?)"; /bin/rm -f "$tmp"; exit 1
-  fi
+  /usr/bin/scp $SSH_OPTS -q "$tmp" "$HOST:$remote" 2>>"$LOG" \
+    || { fail "scp to $HOST failed (box up?)"; /bin/rm -f "$tmp"; exit 1; }
 fi
 /bin/rm -f "$tmp"
+log "scp OK -> $full"
 
-# 3. path -> clipboard + feedback
+# 3. replace the clipboard with the box path, so Cmd+V pastes text
 printf '%s' "$full" | /usr/bin/pbcopy
-log "clipboard set -> $full"
-ok "Cmd+V into Claude"
+log "clipboard -> $full"
+ok "path copied — Cmd+V into Claude"
 printf '%s\n' "$full"
