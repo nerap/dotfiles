@@ -18,8 +18,8 @@ LOG="$HOME/snip2box.log"
 tmp="/tmp/snip-$(date +%s).png"
 
 log()  { echo "$(date '+%H:%M:%S') $*" >> "$LOG"; }
-ok()   { afplay /System/Library/Sounds/Glass.aiff >/dev/null 2>&1 & osascript -e "display notification \"$1\" with title \"snip2box\"" >/dev/null 2>&1; }
-fail() { afplay /System/Library/Sounds/Basso.aiff >/dev/null 2>&1 & osascript -e "display notification \"$1\" with title \"snip2box\"" >/dev/null 2>&1; log "FAIL: $1"; }
+ok()   { osascript -e "display notification \"$1\" with title \"snip2box\"" >/dev/null 2>&1; }
+fail() { osascript -e "display notification \"$1\" with title \"snip2box\"" >/dev/null 2>&1; log "FAIL: $1"; }
 
 log "=== run: host=$HOST ==="
 
