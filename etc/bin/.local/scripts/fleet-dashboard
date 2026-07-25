@@ -12,6 +12,10 @@ set -uo pipefail
 SD="$HOME/bin/.local/scripts"
 card="$SD/fleet-card"
 
+# --rebuild / -r : tear the dashboard down and build it fresh (for a wedged grid)
+REBUILD=0
+case "${1:-}" in -r|--rebuild) REBUILD=1; shift ;; esac
+
 # Walk up from a path to the bare repo that owns it (same rule as switch-workspace).
 find_bare_repo() {
   local dir="$1" parent
@@ -37,6 +41,20 @@ fi
 
 repo=$(basename "$bare" .git | tr . _)
 SESSION="fleet_${repo}"
+
+# Reap orphaned fleet-card loops: any fleet-card process NOT owned by a live pane
+# of the current dashboard. These accumulate when a session is torn down without
+# its card procs dying (tmux server restarts, reboots) and then keep hammering
+# the tmux server every 2s, which makes the dashboard feel stuck. Cheap + safe.
+reap_orphan_cards() {
+  local live pid
+  live=" $(tmux list-panes -t "$SESSION" -F '#{pane_pid}' 2>/dev/null | tr '\n' ' ') "
+  for pid in $(pgrep -f "bin/.local/scripts/fleet-card" 2>/dev/null); do
+    case "$live" in *" $pid "*) : ;; *) kill "$pid" 2>/dev/null ;; esac
+  done
+}
+[ "$REBUILD" = 1 ] && tmux kill-session -t "$SESSION" 2>/dev/null
+reap_orphan_cards
 
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   # Each card's pane is rooted in its worktree so the global workspace-nav keys
