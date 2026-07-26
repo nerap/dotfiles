@@ -155,14 +155,32 @@ cmd_up() {
 
 # Watch the box's URL queue and open each URL in the local (Mac) browser, so
 # `claude login` / MCP OAuth / `gh auth` on the box pop THIS machine's browser.
+# If a URL carries an OAuth loopback callback (redirect_uri=http://localhost:PORT),
+# dynamically forward THAT port to the box first — Claude picks a random callback
+# port per attempt, so fixed forwards can't work. This makes remote MCP OAuth
+# (Notion, Figma, Sentry, …) and `claude login` on the box just work.
 start_url_watcher() {
   local pidf="$HOME/.cache/devbox-url-watcher.pid"
   mkdir -p "$HOME/.cache"
   if [ -f "$pidf" ] && kill -0 "$(cat "$pidf" 2>/dev/null)" 2>/dev/null; then return; fi
-  ( ssh "$NAME" 'mkdir -p ~/ 2>/dev/null; : >> ~/.url-open-queue; tail -n0 -F ~/.url-open-queue 2>/dev/null' \
-      | while IFS= read -r u; do [ -n "$u" ] && open "$u"; done ) >/dev/null 2>&1 &
+  local host="$NAME"
+  ( ssh "$host" 'mkdir -p ~/ 2>/dev/null; : >> ~/.url-open-queue; tail -n0 -F ~/.url-open-queue 2>/dev/null' \
+      | while IFS= read -r u; do
+          [ -n "$u" ] || continue
+          # extract a loopback callback port from the redirect_uri, plain or
+          # %-encoded (localhost%3A52329 or localhost:52329). grep -oE is portable
+          # on macOS BSD sed can't do alternation. Take the digits after the colon.
+          port=$(printf '%s' "$u" \
+            | grep -oiE '(localhost|127\.0\.0\.1)(:|%3a)[0-9]+' \
+            | grep -oE '[0-9]+$' | head -1)
+          if [ -n "$port" ]; then
+            # add the forward to the existing master (idempotent; ignore if present)
+            ssh -O forward -L "$port:localhost:$port" "$host" 2>/dev/null || true
+          fi
+          open "$u"
+        done ) >/dev/null 2>&1 &
   echo $! > "$pidf"
-  say "url-watcher on — browser opens (claude login, MCP OAuth) land on this Mac"
+  say "url-watcher on — browser opens + OAuth callbacks (any port) route to this Mac"
 }
 
 cmd_down() {
