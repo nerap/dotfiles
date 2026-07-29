@@ -79,6 +79,20 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux split-window -h -l 50% -t "$g" -c "$bare/8" -P -F '#{pane_id}' "$card $bare 8" >/dev/null
 
   tmux select-pane -t "$a"
+else
+  # Session already exists: respawn every card pane in place. A card can freeze
+  # (blocked writing its frame to a pane whose SSH client died abruptly) — the
+  # process stays alive but stops refreshing, so the grid looks stuck and C-u
+  # (which only switches here) never heals it. Respawning kills any frozen loop
+  # and starts a fresh one, keeping the layout and NOT bouncing the attached
+  # client (unlike a full kill-session rebuild). Panes map to WT1..8 by geometry:
+  # top row left→right, then bottom row left→right.
+  n=1
+  while IFS= read -r pid; do
+    [ -n "$pid" ] || continue
+    tmux respawn-pane -k -t "$pid" "$card $bare $n" 2>/dev/null
+    n=$((n + 1))
+  done < <(tmux list-panes -t "$SESSION" -F '#{pane_top} #{pane_left} #{pane_id}' 2>/dev/null | sort -n | awk '{print $NF}')
 fi
 
 if [ -n "${TMUX:-}" ]; then
