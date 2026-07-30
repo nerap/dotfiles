@@ -80,19 +80,23 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
 
   tmux select-pane -t "$a"
 else
-  # Session already exists: respawn every card pane in place. A card can freeze
-  # (blocked writing its frame to a pane whose SSH client died abruptly) — the
-  # process stays alive but stops refreshing, so the grid looks stuck and C-u
-  # (which only switches here) never heals it. Respawning kills any frozen loop
-  # and starts a fresh one, keeping the layout and NOT bouncing the attached
-  # client (unlike a full kill-session rebuild). Panes map to WT1..8 by geometry:
-  # top row left→right, then bottom row left→right.
-  n=1
-  while IFS= read -r pid; do
+  # Session exists — SMART REFRESH: respawn ONLY cards whose heartbeat is stale (frozen), leaving
+  # healthy cards untouched so there is no flicker. Each card writes
+  # ~/.claude/fleet/<repo>_<n>.hb every loop; a missing or >6s-old heartbeat means
+  # it is stuck (e.g. blocked writing to a pane whose SSH client died). The
+  # worktree number comes from the pane's cwd (.../<repo>.git/<n>), NOT geometry
+  # order, so the freeze check and the respawn always target the right worktree.
+  fleetdir="$HOME/.claude/fleet"; now=$(date +%s)
+  while IFS='|' read -r pid cwd; do
     [ -n "$pid" ] || continue
-    tmux respawn-pane -k -t "$pid" "$card $bare $n" 2>/dev/null
-    n=$((n + 1))
-  done < <(tmux list-panes -t "$SESSION" -F '#{pane_top} #{pane_left} #{pane_id}' 2>/dev/null | sort -n | awk '{print $NF}')
+    n=${cwd##*/}                                   # last path component = worktree number
+    case "$n" in ''|*[!0-9]*) continue;; esac      # skip panes not rooted in a worktree
+    hb="$fleetdir/${repo}_${n}.hb"; hbts=0
+    [ -f "$hb" ] && hbts=$(cat "$hb" 2>/dev/null || echo 0)
+    if [ $(( now - ${hbts:-0} )) -ge 6 ]; then     # heartbeat stale -> card is frozen
+      tmux respawn-pane -k -t "$pid" "$card $bare $n" 2>/dev/null
+    fi
+  done < <(tmux list-panes -t "$SESSION" -F '#{pane_id}|#{pane_current_path}' 2>/dev/null)
 fi
 
 if [ -n "${TMUX:-}" ]; then
