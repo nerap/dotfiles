@@ -149,8 +149,24 @@ cmd_up() {
   done
   [ "$ok" = 1 ] || die "sshd unreachable after 2min. Check: aws profile/SSO, and that $NAME-sg allows your IP ($(curl -fsS4 --max-time 5 https://api.ipify.org 2>/dev/null))."
   start_url_watcher
+  sync_claude_login
   say "attaching (Ctrl+u for the fleet dashboard)"
   exec ssh -At "$NAME" 'S=$(tmux ls -F "#{session_name}" 2>/dev/null | grep -E "_[1-8]$" | sort | head -1); [ -n "$S" ] && exec tmux attach -t "$S"; exec tmux attach 2>/dev/null || exec tmux new -s main'
+}
+
+# Push THIS Mac's current Claude credential to the box on every connect. The Mac
+# and box share one OAuth credential, and the Mac rotates the refresh token when
+# it refreshes — which silently invalidates the box's copy (the recurring
+# "login expired on the box"). Re-copying at each `up`/`attach` means the box
+# always starts a session with a fresh, valid credential. Non-fatal.
+sync_claude_login() {
+  local helper="$HOME/bin/.local/scripts/devbox-claude-login"
+  [ -x "$helper" ] || return 0
+  if DEVBOX_NAME="$NAME" "$helper" >/dev/null 2>&1; then
+    say "claude login synced to box (fresh credential)"
+  else
+    say "claude login sync skipped (unlock 1Password / Keychain if login fails on box)"
+  fi
 }
 
 # Watch the box's URL queue and open each URL in the local (Mac) browser, so
@@ -202,7 +218,8 @@ cmd_status() {
 }
 
 cmd_ssh()    { local id; id=$(need_id); [ "$(state "$id")" = running ] || die "not running — devbox up"; exec ssh -A "$NAME"; }
-cmd_attach() { local id; id=$(need_id); [ "$(state "$id")" = running ] || die "not running — devbox up"; exec ssh -At "$NAME" 'tmux attach || tmux new -s main'; }
+cmd_attach() { local id; id=$(need_id); [ "$(state "$id")" = running ] || die "not running — devbox up"; sync_claude_login; exec ssh -At "$NAME" 'S=$(tmux ls -F "#{session_name}" 2>/dev/null | grep -E "_[1-8]$" | sort | head -1); [ -n "$S" ] && exec tmux attach -t "$S"; exec tmux attach 2>/dev/null || exec tmux new -s main'; }
+cmd_relogin() { local id; id=$(need_id); [ "$(state "$id")" = running ] || die "not running — devbox up"; sync_claude_login; }
 
 cmd_provision() {
   local id; id=$(need_id)
@@ -216,6 +233,7 @@ cmd_provision() {
 
 case "${1:-}" in
   up)        cmd_up ;;
+  relogin)   cmd_relogin ;;
   down|stop) cmd_down ;;
   status)    cmd_status ;;
   ssh)       cmd_ssh ;;
