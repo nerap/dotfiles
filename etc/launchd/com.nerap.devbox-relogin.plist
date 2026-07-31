@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Auto-refresh the devbox Claude credential every 3h so a long remote session
+     never hits "login expired". Runs `devbox relogin`, which is a no-op when the
+     box is stopped. Load: launchctl load ~/Library/LaunchAgents/com.nerap.devbox-relogin.plist
+     (this file is symlinked there). Logs: /tmp/devbox-relogin.log -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nerap.devbox-relogin</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>/Users/nerap/bin/.local/scripts/devbox relogin &gt;&gt; /tmp/devbox-relogin.log 2&gt;&amp;1</string>
+  </array>
+
+  <!-- launchd starts with a bare PATH; ensure aws (Homebrew) + system tools are found -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- every 3 hours -->
+  <key>StartInterval</key>
+  <integer>10800</integer>
+
+  <!-- also run ~1 min after load/login so it syncs promptly -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/devbox-relogin.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/devbox-relogin.log</string>
+</dict>
+</plist>

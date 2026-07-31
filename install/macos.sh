@@ -171,3 +171,15 @@ macos_defaults() {
   defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
   defaults write com.apple.ActivityMonitor SortDirection -int 0
 }
+
+# devbox credential auto-refresh: launchd agent runs `devbox relogin` every 3h so
+# a long remote Claude session on the EC2 box never hits "login expired".
+os_devbox_relogin_agent() {
+  local src="$DOTFILES_DIR/etc/launchd/com.nerap.devbox-relogin.plist"
+  local dst="$HOME/Library/LaunchAgents/com.nerap.devbox-relogin.plist"
+  [ -f "$src" ] || return 0
+  mkdir -p "$HOME/Library/LaunchAgents"
+  ln -sf "$src" "$dst"
+  launchctl unload "$dst" 2>/dev/null || true
+  launchctl load "$dst" 2>/dev/null || true
+}
