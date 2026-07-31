@@ -39,6 +39,13 @@ AUTH_OK=0
 ensure_auth() {
   [ "$AUTH_OK" = 1 ] && return 0
   if aws_ sts get-caller-identity >/dev/null 2>&1; then AUTH_OK=1; return 0; fi
+  # Non-interactive callers (the launchd auto-refresh) must NEVER trigger an
+  # `aws sso login` browser flow — it can't complete headless and would hang the
+  # timer. They set DEVBOX_NONINTERACTIVE=1 and we fail cleanly instead.
+  if [ "${DEVBOX_NONINTERACTIVE:-0}" = 1 ]; then
+    echo "devbox: SSO expired; skipping (non-interactive). Run 'aws sso login --profile $PROFILE'." >&2
+    return 1
+  fi
   say "AWS SSO session for '$PROFILE' expired — opening browser to log in"
   aws sso login --profile "$PROFILE" >&2 || die "aws sso login failed — run: aws sso login --profile $PROFILE"
   AUTH_OK=1
@@ -67,7 +74,7 @@ ensure_sg() {
 }
 
 need_id() {
-  ensure_auth
+  ensure_auth || return 1
   local id; id=$(instance_id)
   [ -n "$id" ] && [ "$id" != "None" ] || die "No instance tagged Name=$NAME in $REGION (profile $PROFILE). Run terraform apply first."
   echo "$id"
@@ -219,7 +226,11 @@ cmd_status() {
 
 cmd_ssh()    { local id; id=$(need_id); [ "$(state "$id")" = running ] || die "not running — devbox up"; exec ssh -A "$NAME"; }
 cmd_attach() { local id; id=$(need_id); [ "$(state "$id")" = running ] || die "not running — devbox up"; sync_claude_login; exec ssh -At "$NAME" 'S=$(tmux ls -F "#{session_name}" 2>/dev/null | grep -E "_[1-8]$" | sort | head -1); [ -n "$S" ] && exec tmux attach -t "$S"; exec tmux attach 2>/dev/null || exec tmux new -s main'; }
-cmd_relogin() { local id; id=$(need_id); [ "$(state "$id")" = running ] || die "not running — devbox up"; sync_claude_login; }
+cmd_relogin() {
+  local id; id=$(need_id) || { echo "devbox relogin: skipped (SSO/creds unavailable)"; exit 0; }
+  [ "$(state "$id")" = running ] || { echo "devbox relogin: box not running — skipped"; exit 0; }
+  sync_claude_login
+}
 
 cmd_provision() {
   local id; id=$(need_id)

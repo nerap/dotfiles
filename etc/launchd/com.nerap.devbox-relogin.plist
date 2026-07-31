@@ -16,11 +16,16 @@
     <string>/Users/nerap/bin/.local/scripts/devbox relogin &gt;&gt; /tmp/devbox-relogin.log 2&gt;&amp;1</string>
   </array>
 
-  <!-- launchd starts with a bare PATH; ensure aws (Homebrew) + system tools are found -->
+  <!-- launchd starts with a bare PATH; ensure aws (Homebrew) + system tools are
+       found. DEVBOX_NONINTERACTIVE=1 makes `devbox relogin` skip cleanly if the
+       AWS SSO session is expired instead of trying (and hanging on) a browser
+       login — the auto-refresh must never block on interactive auth. -->
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>DEVBOX_NONINTERACTIVE</key>
+    <string>1</string>
   </dict>
 
   <!-- every 3 hours -->
