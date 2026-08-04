@@ -1,25 +1,22 @@
 #!/usr/bin/env bash
-# fleet-dashboard [bare-repo-path] — live 4×2 status grid for worktrees 1-8 of a
-# bare-repo workspace. Bound to C-u. With no argument it detects the workspace
-# from the current tmux pane's path (falling back to prsnl_app), so it works for
-# any repo set up by clone-workspace. Layout mirrors the workspace nav keys:
-#     top row  →  WT1  WT2  WT3  WT4   (H J K L)
-#     bottom   →  WT5  WT6  WT7  WT8   (N M , .)
-# Each pane runs `fleet-card <bare> <n>` and self-refreshes; re-running just
-# switches back to the (per-repo) dashboard session.
-
+# fleet-dashboard [bare-repo-path] — live 4×2 status grid for worktrees 1-8.
+# Bound to C-u. Detects the workspace from the current pane (falls back to
+# prsnl_app). Layout mirrors the nav keys: top row WT1-4 (H J K L), bottom WT5-8.
+#
+# ARCHITECTURE (stable): a SINGLE `fleet-collector` process does all the
+# tmux/git/docker work and renders all 8 cards into ~/.claude/fleet/render/. The
+# 8 pane processes are `fleet-view`, which ONLY read those files — zero tmux
+# calls — so no matter how loaded the box is, panes never freeze or garble.
+# C-u (re-running this) just re-attaches, restarting the collector/views only if
+# they died. No per-pane races, nothing to "smart-refresh".
 set -uo pipefail
 SD="$HOME/bin/.local/scripts"
-# Panes run the SUPERVISOR (not fleet-card directly) so a crashed card auto-
-# restarts in ~1s without needing C-u. Falls back to fleet-card if the supervisor
-# isn't present (older checkout).
-card="$SD/fleet-card-sup"; [ -x "$card" ] || card="$SD/fleet-card"
+view="$SD/fleet-view"
+collector="$SD/fleet-collector"
 
-# --rebuild / -r : tear the dashboard down and build it fresh (for a wedged grid)
 REBUILD=0
 case "${1:-}" in -r|--rebuild) REBUILD=1; shift ;; esac
 
-# Walk up from a path to the bare repo that owns it (same rule as switch-workspace).
 find_bare_repo() {
   local dir="$1" parent
   while [ "$dir" != "/" ] && [ -n "$dir" ]; do
@@ -37,78 +34,48 @@ if [ -z "$bare" ] && [ -n "${TMUX:-}" ]; then
   bare=$(find_bare_repo "$cur" 2>/dev/null || true)
 fi
 [ -z "$bare" ] && bare="$HOME/work/prsnl_app.git"
-if [ ! -d "$bare" ]; then
-  [ -n "${TMUX:-}" ] && tmux display-message "fleet: no worktree workspace here"
-  exit 0
-fi
+[ -d "$bare" ] || { [ -n "${TMUX:-}" ] && tmux display-message "fleet: no worktree workspace here"; exit 0; }
 
 repo=$(basename "$bare" .git | tr . _)
 SESSION="fleet_${repo}"
+CPIDF="$HOME/.claude/fleet/collector.${repo}.pid"
+mkdir -p "$HOME/.claude/fleet/render"
 
-# Reap orphaned fleet-card loops: any fleet-card process NOT owned by a live pane
-# of the current dashboard. These accumulate when a session is torn down without
-# its card procs dying (tmux server restarts, reboots) and then keep hammering
-# the tmux server every 2s, which makes the dashboard feel stuck. Cheap + safe.
-reap_orphan_cards() {
-  local live pid ppid
-  live=" $(tmux list-panes -t "$SESSION" -F '#{pane_pid}' 2>/dev/null | tr '\n' ' ') "
-  # Only SUPERVISORS are pane processes. Reap any supervisor NOT owned by a live
-  # pane (kills its card child too). Crucially, do NOT match live supervisors'
-  # card children here, or every C-u would kill+restart all cards (a flicker).
-  for pid in $(pgrep -f "fleet-card-sup" 2>/dev/null); do
-    case "$live" in *" $pid "*) : ;; *) kill "$pid" 2>/dev/null; pkill -P "$pid" 2>/dev/null ;; esac
-  done
-  # Mop up any stray bare fleet-card whose parent is gone (legacy / no supervisor).
-  for pid in $(pgrep -f "/fleet-card " 2>/dev/null); do
-    ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
-    kill -0 "$ppid" 2>/dev/null || kill "$pid" 2>/dev/null
-  done
+# ── the one collector, supervised. Start it if not already running.
+start_collector() {
+  # already supervised? nothing to do.
+  if [ -f "$CPIDF" ] && kill -0 "$(cat "$CPIDF" 2>/dev/null)" 2>/dev/null; then return; fi
+  # stale pidfile but a collector for THIS repo is somehow running -> reap it so we
+  # never end up with two (which would double the tmux load and flicker files).
+  pkill -f "fleet-collector $bare" 2>/dev/null
+  sleep 1
+  # tiny supervisor loop so a collector crash self-restarts
+  ( while :; do "$collector" "$bare" >/dev/null 2>&1; sleep 1; done ) >/dev/null 2>&1 &
+  echo $! > "$CPIDF"
 }
-[ "$REBUILD" = 1 ] && tmux kill-session -t "$SESSION" 2>/dev/null
-reap_orphan_cards
+
+[ "$REBUILD" = 1 ] && { tmux kill-session -t "$SESSION" 2>/dev/null; [ -f "$CPIDF" ] && kill "$(cat "$CPIDF")" 2>/dev/null; rm -f "$CPIDF"; }
 
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
-  # Each card's pane is rooted in its worktree so the global workspace-nav keys
-  # (C-h/j/k/l/n/m/,/.) resolve the bare repo and jump straight to that worktree.
-  a=$(tmux new-session -ds "$SESSION" -n dash -c "$bare/1" -P -F '#{pane_id}' "$card $bare 1")
+  # each pane rooted in its worktree so the nav keys (C-h/j/k/l/n/m/,/.) resolve
+  # the bare repo and jump straight there.
+  a=$(tmux new-session -ds "$SESSION" -n dash -c "$bare/1" -P -F '#{pane_id}' "$view $bare 1")
   tmux set-option -t "$SESSION" status off
-  tmux set-option -t "$SESSION" mouse off          # read-only: no click-select, no drag-resize
+  tmux set-option -t "$SESSION" mouse off
   tmux set-option -t "$SESSION" pane-border-status top
   tmux set-option -t "$SESSION" pane-border-format ' #{pane_index} '
 
-  # bottom-row anchor (WT5) — split the whole window into two rows
-  e=$(tmux split-window -v -l 50% -t "$a" -c "$bare/5" -P -F '#{pane_id}' "$card $bare 5")
-
-  # top row → 1 | 2 | 3 | 4
-  c=$(tmux split-window -h -l 50% -t "$a" -c "$bare/3" -P -F '#{pane_id}' "$card $bare 3")
-  tmux split-window -h -l 50% -t "$a" -c "$bare/2" -P -F '#{pane_id}' "$card $bare 2" >/dev/null
-  tmux split-window -h -l 50% -t "$c" -c "$bare/4" -P -F '#{pane_id}' "$card $bare 4" >/dev/null
-
-  # bottom row → 5 | 6 | 7 | 8
-  g=$(tmux split-window -h -l 50% -t "$e" -c "$bare/7" -P -F '#{pane_id}' "$card $bare 7")
-  tmux split-window -h -l 50% -t "$e" -c "$bare/6" -P -F '#{pane_id}' "$card $bare 6" >/dev/null
-  tmux split-window -h -l 50% -t "$g" -c "$bare/8" -P -F '#{pane_id}' "$card $bare 8" >/dev/null
-
+  e=$(tmux split-window -v -l 50% -t "$a" -c "$bare/5" -P -F '#{pane_id}' "$view $bare 5")
+  c=$(tmux split-window -h -l 50% -t "$a" -c "$bare/3" -P -F '#{pane_id}' "$view $bare 3")
+  tmux split-window -h -l 50% -t "$a" -c "$bare/2" -P -F '#{pane_id}' "$view $bare 2" >/dev/null
+  tmux split-window -h -l 50% -t "$c" -c "$bare/4" -P -F '#{pane_id}' "$view $bare 4" >/dev/null
+  g=$(tmux split-window -h -l 50% -t "$e" -c "$bare/7" -P -F '#{pane_id}' "$view $bare 7")
+  tmux split-window -h -l 50% -t "$e" -c "$bare/6" -P -F '#{pane_id}' "$view $bare 6" >/dev/null
+  tmux split-window -h -l 50% -t "$g" -c "$bare/8" -P -F '#{pane_id}' "$view $bare 8" >/dev/null
   tmux select-pane -t "$a"
-else
-  # Session exists — SMART REFRESH: respawn ONLY cards whose heartbeat is stale (frozen), leaving
-  # healthy cards untouched so there is no flicker. Each card writes
-  # ~/.claude/fleet/<repo>_<n>.hb every loop; a missing or >6s-old heartbeat means
-  # it is stuck (e.g. blocked writing to a pane whose SSH client died). The
-  # worktree number comes from the pane's cwd (.../<repo>.git/<n>), NOT geometry
-  # order, so the freeze check and the respawn always target the right worktree.
-  fleetdir="$HOME/.claude/fleet"; now=$(date +%s)
-  while IFS='|' read -r pid cwd; do
-    [ -n "$pid" ] || continue
-    n=${cwd##*/}                                   # last path component = worktree number
-    case "$n" in ''|*[!0-9]*) continue;; esac      # skip panes not rooted in a worktree
-    hb="$fleetdir/${repo}_${n}.hb"; hbts=0
-    [ -f "$hb" ] && hbts=$(cat "$hb" 2>/dev/null || echo 0)
-    if [ $(( now - ${hbts:-0} )) -ge 10 ]; then    # heartbeat stale -> card is frozen
-      tmux respawn-pane -k -t "$pid" "$card $bare $n" 2>/dev/null
-    fi
-  done < <(tmux list-panes -t "$SESSION" -F '#{pane_id}|#{pane_current_path}' 2>/dev/null)
 fi
+
+start_collector   # ensure the single data process is running
 
 if [ -n "${TMUX:-}" ]; then
   tmux switch-client -t "$SESSION"
