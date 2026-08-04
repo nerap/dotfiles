@@ -39,8 +39,20 @@ os_finish() {
   have bun  || curl -fsSL https://bun.sh/install | bash
   export PATH="$HOME/.bun/bin:$PATH"
 
-  log "Claude Code"
-  have claude || sudo npm install -g @anthropic-ai/claude-code
+  log "Claude Code (user-writable global so auto-update works)"
+  # Install into a USER-owned npm prefix, NOT sudo -g into /usr. A root-owned
+  # install can't self-update ("no write permission to npm prefix"), which pins
+  # the box to an old build — older Claude versions mishandle OAuth token refresh,
+  # which is why the box kept "expiring". A writable prefix keeps it current.
+  mkdir -p "$HOME/.npm-global"
+  npm config set prefix "$HOME/.npm-global"
+  grep -q '.npm-global/bin' "$HOME/.zshenv" 2>/dev/null || echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$HOME/.zshenv"
+  export PATH="$HOME/.npm-global/bin:$PATH"
+  if ! command -v claude >/dev/null 2>&1 || [ "$(command -v claude)" = /usr/bin/claude ]; then
+    sudo npm uninstall -g @anthropic-ai/claude-code 2>/dev/null || true
+    sudo rm -f /usr/bin/claude 2>/dev/null || true
+    npm install -g @anthropic-ai/claude-code@latest
+  fi
 
   log "Docker (per-worktree dev stacks: compose + local supabase)"
   if ! have docker; then
